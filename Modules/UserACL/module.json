@@ -1,0 +1,13 @@
+{
+    "name": "UserACL",
+    "alias": "useracl",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\UserACL\\Providers\\UserACLServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

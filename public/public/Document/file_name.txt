@@ -1,0 +1,18 @@
+attribute_list.php
+bare-theme.php
+bare-theme copy.php
+cart_js.php
+cart.php
+category_list.php
+comment_js.php
+customer_list.php
+my_orders.php
+notification_js.php
+order_list.php
+pickup_point_list.php
+product_js.php
+product_list.php
+qr_code.php
+reminder_settings.php
+store_js.php
+store_list.php

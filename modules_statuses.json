@@ -1,0 +1,18 @@
+{
+    "Properties": true,
+    "Contacts": true,
+    "Inspection": true,
+    "Listings": true,
+    "Jobs": true,
+    "Tasks": true,
+    "Maintenance": true,
+    "MaintenancesController": true,
+    "MaintenancesLabelController": true,
+    "Messages": true,
+    "UserACL": true,
+    "Accounts": true,
+    "Controller": true,
+    "SmsTemplateController": true,
+    "Settings": true,
+    "Notification": true
+}

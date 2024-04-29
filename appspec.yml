@@ -1,0 +1,6 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /var/www/html/mydaybackend_new
+# frontendmyday-env.eba-e7fjdssv.ap-southeast-1.elasticbeanstalk.com

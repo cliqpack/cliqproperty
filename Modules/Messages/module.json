@@ -1,0 +1,13 @@
+{
+    "name": "Messages",
+    "alias": "messages",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Messages\\Providers\\MessagesServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

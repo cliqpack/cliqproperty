@@ -1,0 +1,121 @@
+/* //palette */
+/* $green: #a2ccb6
+$light-peach: #ffecd9
+$peach: #ee786e
+$sand: #fceeb5
+$white: #fff */
+
+
+*{
+    font-family: 'Poppins', sans-serif;
+}
+
+a{
+    color: #000000;
+    font-family: 'Poppins', sans-serif;
+   
+}
+p{
+  font-family: 'Poppins', sans-serif !important;
+}
+
+
+
+.animate-text
+{
+   text-transform: uppercase;
+  background-image: linear-gradient(
+    -225deg,
+    #4d01ff 0%,
+    #292bb8 29%,
+    #1148d7 67%,
+    #abc364 100%
+  );
+  background-size: auto auto;
+  background-clip: border-box;
+  background-size: 200% auto;
+  color: #fff;
+  background-clip: text;
+  text-fill-color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textclip 2s linear infinite;
+  display: inline-block;
+      font-size: 190px;
+}
+
+@keyframes textclip {
+  to {
+    background-position: 200% center;
+  }
+}
+    /* .animate-text {
+    background-image: linear-gradient(-225deg, #37a000 0%, #29B841 29%, #1148d7 67%, #fff800 100%);
+    background-size: auto auto;
+    background-clip: border-box;
+    background-size: 200% auto;
+    color: #fff;
+    background-clip: text;
+    text-fill-color: transparent;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: textanim 2s linear infinite;
+    display: inline-block;
+} */
+
+.bg-color{
+    background-color: #556ee6 !important;
+    color: rgb(0, 0, 0);
+    
+    border-color: #29B841;
+    box-shadow: none;
+}
+
+.bg-pastel{
+    
+    background-color: #556ee6 !important;
+    color: rgb(255, 255, 255);
+    
+    border-color: #2200bc;
+    box-shadow: none;
+}
+/* .nav-item, .nav-item:hover {
+    color: #556ee6;
+    color: white;
+  } */
+  .nav-link.active{
+    color: #fff !important;
+    background-color: #556ee6 !important;
+  }
+  .nav-sidebar>.nav-item:hover>.nav-link{
+    color: #556ee6 !important;
+     /* color: #fff !important; */
+}
+.elevation-4{
+  box-shadow: none;
+}
+.property-title{
+  font-size: 21px !important;
+  font-weight: 700 !important;
+}
+
+.addProperty {
+  padding: 10px;
+  background-color: #1148d7 !important;
+  border-radius: 8px;
+  border: none;
+  margin-top: 20px;
+  color: #fff;
+  margin-bottom: 30px;
+}
+
+.animate-text{
+  margin-top: 20px !important;
+}
+
+.mat-icon{
+  padding-top: 20px;
+}
+
+
+

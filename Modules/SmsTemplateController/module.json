@@ -1,0 +1,13 @@
+{
+    "name": "SmsTemplateController",
+    "alias": "smstemplatecontroller",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\SmsTemplateController\\Providers\\SmsTemplateControllerServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}
