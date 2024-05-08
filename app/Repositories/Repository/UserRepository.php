@@ -372,6 +372,7 @@ class UserRepository implements UserContruct
     public function findVerified($id)
     {
         try {
+            
             $front_url = getenv("FRONT_API");
             $user = User::where('id', $id);
 
