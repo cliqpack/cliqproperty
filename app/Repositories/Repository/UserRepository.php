@@ -375,6 +375,7 @@ class UserRepository implements UserContruct
             $front_url = getenv("FRONT_API");
             $user = User::where('id', $id);
 
+            
             if ($user->first()->email_verified_at == null) {
                 if ($user->first()->user_type == "Guest") {
                     $user->update([
