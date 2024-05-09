@@ -507,7 +507,7 @@ class ImapController extends Controller
             }
 
             $obj1 = [
-                'status' => 'Inbound mail inserted for property manager to myday',
+                'status' => 'Inbound mail inserted for property manager to CliqProperty',
                 'rawMessage' => $msg['rawMessage'],
                 'imapId' => $imapModel->id,
                 'message_id' => $msg['messageId'],
@@ -529,7 +529,7 @@ class ImapController extends Controller
             array_push($obj, $obj1);
         }else {
             $obj1 = [
-                'message' => 'No inbound mail inserted for property manager to myday',
+                'message' => 'No inbound mail inserted for property manager to CliqProperty',
             ];
             array_push($obj, $obj1);
         }
@@ -575,7 +575,7 @@ class ImapController extends Controller
             array_push($obj, $obj2);
         }else {
             $obj2 = [
-                'message' => 'No inbound mail inserted for owner, tenant, supplier, seller to myday',
+                'message' => 'No inbound mail inserted for owner, tenant, supplier, seller to CliqProperty',
             ];
             array_push($obj, $obj2);
         }
@@ -632,7 +632,7 @@ class ImapController extends Controller
             return $obj;
         } else {
             $obj = [
-                'message' => 'No inbound thread inserted to myday',
+                'message' => 'No inbound thread inserted to CliqProperty',
             ];
             return $obj;
         }

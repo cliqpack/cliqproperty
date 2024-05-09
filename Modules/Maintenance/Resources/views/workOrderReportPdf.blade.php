@@ -118,7 +118,7 @@
                         <strong>(w) {{ $data[3]['work_phone'] ? $data[3]['work_phone'] : '48527438590' }}</strong>
                         <br />
                         <div>
-                            {{ $data[3]['email'] ? $data[3]['email'] : 'info@myday.com' }}
+                            {{ $data[3]['email'] ? $data[3]['email'] : 'info@cliqproperty.com' }}
                         </div>
                         <div>
                             {{ $data[3]['address'] ? $data[3]['address'] : 'Melbourne' }}

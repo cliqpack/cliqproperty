@@ -99,7 +99,7 @@ class DocumentGenerateController extends Controller
         $data['user'] = $user;
         $data['company'] = $company;
 
-        $body = "You have received a disbursement from MyDay. Disbursement amount is $" . $data['payout']->amount . ".";
+        $body = "You have received a disbursement from CliqProperty. Disbursement amount is $" . $data['payout']->amount . ".";
         $statementName = PropertyDocs::latest()->first();
         $dompdf = new Dompdf();
         $options = new Options();

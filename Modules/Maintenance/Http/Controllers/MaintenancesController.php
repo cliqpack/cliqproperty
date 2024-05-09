@@ -411,7 +411,7 @@ class MaintenancesController extends Controller
 
                 $maintenanceActivity_email_template = new PropertyActivityEmail();
                 $maintenanceActivity_email_template->email_to = $request->owner_email;
-                $maintenanceActivity_email_template->email_from = "no-reply@myday.com";
+                $maintenanceActivity_email_template->email_from = "no-reply@cliqproperty.com";
                 $maintenanceActivity_email_template->subject = "Owner Maintenance Request";
                 $maintenanceActivity_email_template->email_body = "You have an Maintenance Request for owner";
                 $maintenanceActivity_email_template->email_status = "pending";
@@ -422,7 +422,7 @@ class MaintenancesController extends Controller
 
                 $messageWithMail->property_id = $request->property_id;
                 $messageWithMail->to       = $request->owner_email ? $request->owner_email : "no_owner_email@mail.com";
-                $messageWithMail->from     = "no-reply@myday.com";
+                $messageWithMail->from     = "no-reply@cliqproperty.com";
                 $messageWithMail->subject  = "Owner Maintenance Request";
                 $messageWithMail->body     = "You have an Maintenance Request for owner";
                 $messageWithMail->status   = "Outbox";
@@ -430,7 +430,7 @@ class MaintenancesController extends Controller
 
                 $maintenanceActivity_email_template = new PropertyActivityEmail();
                 $maintenanceActivity_email_template->email_to = $request->tenant_email;
-                $maintenanceActivity_email_template->email_from = "myday";
+                $maintenanceActivity_email_template->email_from = "cliqproperty";
                 $maintenanceActivity_email_template->subject = "Tenant Maintenance Request";
                 $maintenanceActivity_email_template->email_body = "You have an Maintenance Request Tenant";
                 $maintenanceActivity_email_template->email_status = "pending";
@@ -439,7 +439,7 @@ class MaintenancesController extends Controller
 
                 $messageWithMail->property_id = $request->property_id;
                 $messageWithMail->to       = $request->tenant_email ? $request->tenant_email : "no_tenant_email@mail.com";
-                $messageWithMail->from     = "no-reply@myday.com";
+                $messageWithMail->from     = "no-reply@cliqproperty.com";
                 $messageWithMail->subject  = "Tenant Maintenance Request";
                 $messageWithMail->body     = "You have an Maintenance Request Tenant";
                 $messageWithMail->status   = "Outbox";

@@ -333,7 +333,7 @@ class InspectionController extends Controller
                         $messageWithMail->property_id = $request->property_id;
                         $messageWithMail->to = $tenantEmail;
                         $messageWithMail->from = auth('api')->user()->email;
-                        $messageWithMail->subject = "Inspection Reminder form MyDay";
+                        $messageWithMail->subject = "Inspection Reminder form CliqProperty";
                         $messageWithMail->body = $body;
                         $messageWithMail->status = $request->status ? $request->status : "Sent";
                         $messageWithMail->type = "email";
@@ -346,7 +346,7 @@ class InspectionController extends Controller
                             'property_id' => $request->property_id,
                             'to' => $tenantEmail,
                             'from' => auth('api')->user()->email,
-                            'subject' => "Inspection Notice for " . $property->reference . "from Myday",
+                            'subject' => "Inspection Notice for " . $property->reference . "from CliqProperty",
                             'body' => $body,
                             'status' => "Sent",
                             'company_id' => auth('api')->user()->company_id,
