@@ -356,7 +356,7 @@ class InspectionController extends Controller
 
                         $request2 = new \Illuminate\Http\Request();
                         $request2->replace($data);
-                        Mail::to($tenantEmail)->send(new Messsage($request2));
+                        // Mail::to($tenantEmail)->send(new Messsage($request2));
                     }
 
                     if ($request->inspection_type == "Routine" && $tenant_contact) {

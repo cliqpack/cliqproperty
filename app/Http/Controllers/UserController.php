@@ -134,8 +134,10 @@ class UserController extends Controller
                     'address' => $request->address,
                 ]);
             }
+            $user = User::where('id', $user_id)->first();
             return response()->json([
                 'message' => 'Profile information has been updated successfully',
+                'user' => $user,
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
