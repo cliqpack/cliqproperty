@@ -24,10 +24,10 @@
                         <strong>(w) 1111 2222</strong>
                         <br />
                         <div>
-                            www.myday.com
+                            www.cliqproperty.com
                         </div>
                         <div>
-                            reply@myday.com
+                            reply@cliqproperty.com
                         </div>
                         <div>
                             {{ $propAddress }} <br />

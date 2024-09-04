@@ -369,7 +369,8 @@ class OwnerController extends Controller
                             $ownerContact->work_phone   = $request->contacts[0]['work_phone'];
                             $ownerContact->home_phone   = $request->contacts[0]['home_phone'];
                             $ownerContact->email        = $request->contacts[0]['email'];
-                            $ownerContact->abn          = $request->abn;
+                            // $ownerContact->abn          = $request->abn;
+                            // $ownerContact->abn          = !empty($request->abn) ? $request->abn : NULL;
                             $ownerContact->notes        = $request->notes;
                             if ($ownerCheck > 0) {
                                 $ownerContact->status        = false;

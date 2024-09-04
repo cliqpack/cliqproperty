@@ -325,7 +325,7 @@ class SellerController extends Controller
 
                     $activity_email_template = new PropertyActivityEmail();
                     $activity_email_template->email_to = $request->contacts[0]['email'];
-                    $activity_email_template->email_from = "no-reply@myday.com";
+                    $activity_email_template->email_from = "no-reply@cliqproperty.com";
                     $activity_email_template->subject = " Listed - " . $propsData->reference;
                     $activity_email_template->email_body = "<p>This seller has Been Listed</p>";
                     $activity_email_template->email_status = "pending";
@@ -335,7 +335,7 @@ class SellerController extends Controller
                     $messageWithMail = new MessageWithMail();
                     $messageWithMail->property_id = $request->property_id;
                     $messageWithMail->to       = $request->contacts[0]['email'] ? $request->contacts[0]['email'] : "no_owner_email@mail.com";
-                    $messageWithMail->from     = "no-reply@myday.com";
+                    $messageWithMail->from     = "no-reply@cliqproperty.com";
                     $messageWithMail->subject  = " Listed - " . $propsData->reference;
                     $messageWithMail->body     = "<p>This seller has Been Listed</p>";
                     $messageWithMail->status   = "Outbox";

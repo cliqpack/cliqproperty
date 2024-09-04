@@ -372,6 +372,8 @@ class UserRepository implements UserContruct
     public function findVerified($id)
     {
         try {
+            
+            $front_url = getenv("FRONT_API");
             $user = User::where('id', $id);
 
             if ($user->first()->email_verified_at == null) {
@@ -379,12 +381,12 @@ class UserRepository implements UserContruct
                     $user->update([
                         "email_verified_at" => NOW()
                     ]);
-                    return redirect('https://frontend-myday.cliqpack.com/register-owner-tenant/' . $id);
+                    return redirect($front_url. '/' .'register-owner-tenant/' . $id);
                 } else {
                     $user->update([
                         "email_verified_at" => NOW()
                     ]);
-                    return redirect('https://frontend-myday.cliqpack.com');
+                    return redirect($front_url);
                 }
             } else {
                 return "You are Already Verified Please Login";
