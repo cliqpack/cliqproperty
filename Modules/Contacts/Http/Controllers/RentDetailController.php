@@ -7,13 +7,12 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 use Modules\Contacts\Entities\RentDetail;
-use Modules\Contacts\Entities\TenantContact;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Http\Controllers\RentManagement\RentManagementController;
-use Modules\Contacts\Entities\RentManagement;
 use Modules\Contacts\Entities\TenantFolio;
 use Modules\Inspection\Entities\Inspection;
 use Modules\Maintenance\Entities\Maintenance;
+use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 
 class RentDetailController extends Controller
 {
@@ -21,9 +20,7 @@ class RentDetailController extends Controller
      * Display a listing of the resource.
      * @return Renderable
      */
-    public function index()
-    {
-    }
+    public function index() {}
 
     /**
      * Show the form for creating a new resource.
@@ -43,9 +40,9 @@ class RentDetailController extends Controller
     {
         try {
             $attributeNames = array(
-                'notice_period'             => $request->notice_period,
-                'rent_amount'            => $request->new_rent_value,
-                'active_date'             => $request->new_rent_from,
+                'notice_period' => $request->notice_period,
+                'rent_amount' => $request->new_rent_value,
+                'active_date' => $request->new_rent_from,
             );
             $validator = Validator::make($attributeNames, [
                 'notice_period' => 'required',
@@ -73,10 +70,21 @@ class RentDetailController extends Controller
                             "rent_amount" => $request->new_rent_value,
                             "active_date" => $request->new_rent_from,
                         ]);
-                        
                         $rentDetail = RentDetail::where('tenant_id', $request->tc_id)->first();
                         $rentManagement->storeAdjustRentManagement($request->new_rent_from, $rentDetail->id, $request->tc_id, $request->new_rent_value);
                     }
+                    
+                    $message_action_name = "Tenancy";
+                    $messsage_trigger_point = 'Rent Adjustment';
+                    $data = [
+                        'id' => $request->tc_id,
+                        "property_id" => $request->property_id,
+                        "status" => "Rent Adjustment",
+                        "tenant_contact_id" => $request->tc_id
+                    ];
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                    
                     return response()->json(['data' => $rentDetail, 'message' => 'successful'], 200);
                 });
             }
@@ -95,18 +103,18 @@ class RentDetailController extends Controller
      * @param int $id
      * @return Renderable
      */
-    public function show($id,$property_id)
+    public function show($id, $property_id)
     {
         try {
             $date = date("Y-m-d");
             $newDate = date('Y-m-d', strtotime($date . '-' . '12 months'));
 
             $rentDetail = RentDetail::where('tenant_id', $id)->where('active', '0')->first();
-            $last_inspection=Inspection::where('property_id',$property_id)->orderBy('id','desc')->first();
-            $job_agent=Maintenance::where('reported_by','Agent')->where('property_id',$property_id)->whereBetween('created_at', [$newDate, $date])->get();
-            $job_owner=Maintenance::where('reported_by','Owner')->where('property_id',$property_id)->whereBetween('created_at', [$newDate, $date])->get();
-            $job_tenant=Maintenance::where('reported_by','Tenant')->where('property_id',$property_id)->whereBetween('created_at', [$newDate, $date])->get();
-            return response()->json(['data' => $rentDetail,'last_inspection'=>$last_inspection,'jobs'=>['job_agent'=>count($job_agent),'job_owner'=>count($job_owner),'job_tenant'=>count($job_tenant),'start_date'=>$date,'end_date'=>$newDate], 'message' => 'successful'], 200);
+            $last_inspection = Inspection::where('property_id', $property_id)->orderBy('id', 'desc')->first();
+            $job_agent = Maintenance::where('reported_by', 'Agent')->where('property_id', $property_id)->whereBetween('created_at', [$newDate, $date])->get();
+            $job_owner = Maintenance::where('reported_by', 'Owner')->where('property_id', $property_id)->whereBetween('created_at', [$newDate, $date])->get();
+            $job_tenant = Maintenance::where('reported_by', 'Tenant')->where('property_id', $property_id)->whereBetween('created_at', [$newDate, $date])->get();
+            return response()->json(['data' => $rentDetail, 'last_inspection' => $last_inspection, 'jobs' => ['job_agent' => count($job_agent), 'job_owner' => count($job_owner), 'job_tenant' => count($job_tenant), 'start_date' => $date, 'end_date' => $newDate], 'message' => 'successful'], 200);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "error",

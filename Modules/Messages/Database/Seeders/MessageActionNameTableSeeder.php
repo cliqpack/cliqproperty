@@ -3,10 +3,7 @@
 namespace Modules\Messages\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Modules\Messages\Database\Factories\MessageActionNameFactory;
 use Modules\Messages\Entities\MessageActionName;
 
 class MessageActionNameTableSeeder extends Seeder
@@ -22,7 +19,30 @@ class MessageActionNameTableSeeder extends Seeder
         $companyIds = DB::table('companies')->pluck('id')->toArray();
 
         // Action names to seed
-        $names = ['Inspections', 'Maintenance', 'Listing', 'Tenancy', 'Contact', 'Reminder', 'Routine'];
+        $names = [
+            "Contact",
+            "Inspections All",
+            "Inspections Routine",
+            "Job",
+            "Key Management",
+            "Lease Renewal",
+            "Messages",
+            "Owner Contact",
+            "Reminders - Property",
+            "Rental Listing",
+            "Sale Listing",
+            "Sales Agreement",
+            "Task",
+            "Tenancy",
+            "Tenant Invoice",
+            "Tenant Receipt",
+            "Tenant Rent Invoice",
+            "Tenant Statement",
+            "Folio Receipt",
+            "Owner Financial Activity",
+            "Owner Statement",
+            "Supplier Statement"
+        ];
 
         // Loop through each company ID
         foreach ($companyIds as $companyId) {
@@ -32,7 +52,7 @@ class MessageActionNameTableSeeder extends Seeder
                 $existingActionName = MessageActionName::where('company_id', $companyId)
                     ->where('name', $name)
                     ->first();
-
+                
                 // If the action name does not exist, create it
                 if (!$existingActionName) {
                     MessageActionName::create([

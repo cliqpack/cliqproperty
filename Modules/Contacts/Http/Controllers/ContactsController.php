@@ -114,35 +114,118 @@ class ContactsController extends Controller
             $datas = [];
 
             $offset = 0;
-            $offset = $page_qty * ($request->page - 1);
+            $offset = intval($page_qty) * intval(($request->page - 1));
+
+            $labels = json_decode($request->labels, true);
 
             if ($request->q != 'null') {
-
-                $contacts = Contacts::where('company_id', auth('api')->user()->company_id)
-                    ->where('id', 'LIKE', '%' . $request->q . '%')
-                    ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
-                    ->orWhere('first_name', 'LIKE', '%' . $request->q . '%')
-                    ->orWhere('mobile_phone', 'LIKE', '%' . $request->q . '%')
-                    ->offset($offset)->limit($page_qty)
-                    ->orderBy($request->sortField, $request->sortValue)
-                    ->get();
-                $contactsAll = Contacts::where('company_id', auth('api')->user()->company_id)
-                    ->where('id', 'LIKE', '%' . $request->q . '%')
-                    ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
-                    ->orWhere('first_name', 'LIKE', '%' . $request->q . '%')
-                    ->orWhere('mobile_phone', 'LIKE', '%' . $request->q . '%')
-                    ->orderBy($request->sortField, $request->sortValue)
-                    ->get();
+                if (!empty($labels)) {
+                    $contacts = Contacts::where('company_id', auth('api')->user()->company_id)
+                        ->where('archive', false)
+                        ->where(function ($query) use ($request) {
+                            $query->where('id', 'LIKE', '%' . $request->q . '%')
+                                ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
+                                ->orWhere('first_name', 'LIKE', '%' . $request->q . '%')
+                                ->orWhere('mobile_phone', 'LIKE', '%' . $request->q . '%');
+                        })
+                        ->when(!empty($labels), function ($query) use ($labels) {
+                            $query->whereHas('contact_label', function ($query) use ($labels) {
+                                $query->whereIn('labels', $labels);
+                            });
+                        })
+                        ->with('contact_label')
+                        ->offset($offset)
+                        ->limit($page_qty)
+                        ->orderBy($request->sortField, $request->sortValue)
+                        ->get();
+                    $contactsAll = Contacts::where('company_id', auth('api')->user()->company_id)
+                        ->where('archive', false)
+                        ->where(function ($query) use ($request) {
+                            $query->where('id', 'LIKE', '%' . $request->q . '%')
+                                ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
+                                ->orWhere('first_name', 'LIKE', '%' . $request->q . '%')
+                                ->orWhere('mobile_phone', 'LIKE', '%' . $request->q . '%');
+                        })
+                        ->when(!empty($labels), function ($query) use ($labels) {
+                            $query->whereHas('contact_label', function ($query) use ($labels) {
+                                $query->whereIn('labels', $labels);
+                            });
+                        })
+                        ->with('contact_label')
+                        ->orderBy($request->sortField, $request->sortValue)
+                        ->get();
+                } else {
+                    $contacts = Contacts::where('company_id', auth('api')->user()->company_id)
+                        ->where('archive', false)
+                        ->where('id', 'LIKE', '%' . $request->q . '%')
+                        ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
+                        ->orWhere('first_name', 'LIKE', '%' . $request->q . '%')
+                        ->orWhere('mobile_phone', 'LIKE', '%' . $request->q . '%')
+                        ->with('contact_label')
+                        ->offset($offset)->limit($page_qty)
+                        ->orderBy($request->sortField, $request->sortValue)
+                        ->get();
+                    $contactsAll = Contacts::where('company_id', auth('api')->user()->company_id)
+                        ->where('archive', false)
+                        ->where('id', 'LIKE', '%' . $request->q . '%')
+                        ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
+                        ->orWhere('first_name', 'LIKE', '%' . $request->q . '%')
+                        ->with('contact_label')
+                        ->orWhere('mobile_phone', 'LIKE', '%' . $request->q . '%')
+                        ->orderBy($request->sortField, $request->sortValue)
+                        ->get();
+                }
             } else {
                 if (auth('api')->user()->user_type == "Property Manager") {
-                    $contacts = Contacts::where('company_id', auth('api')->user()->company_id)->offset($offset)->limit($page_qty)->get();
-                    $contactsAll = Contacts::where('company_id', auth('api')->user()->company_id)->get();
+                    if (!empty($labels)) {
+                        $contacts = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->with('contact_label')
+                            ->offset($offset)
+                            ->limit($page_qty)
+                            ->get();
+                        $contactsAll = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })->with('contact_label')->get();
+                    } else {
+                        $contacts = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->with('contact_label')->offset($offset)->limit($page_qty)->get();
+                        $contactsAll = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->with('contact_label')->get();
+                    }
                 } else {
-                    $contacts = Contacts::where('email', auth('api')->user()->email)->offset($offset)->limit($page_qty)->get();
-                    $contactsAll = Contacts::where('email', auth('api')->user()->email)->get();
+                    if (!empty($labels)) {
+                        $contacts = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->with('contact_label')
+                            ->offset($offset)
+                            ->limit($page_qty)
+                            ->get();
+                        $contactsAll = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })->with('contact_label')->get();
+                    } else {
+                        $contacts = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->with('contact_label')->offset($offset)->limit($page_qty)->get();
+                        $contactsAll = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->with('contact_label')->get();
+                    }
                 }
             }
-
 
             foreach ($contacts as $contact) {
                 $role = '';
@@ -163,6 +246,12 @@ class ContactsController extends Controller
                 if ($contact->seller != 0) {
                     $role .= 'Seller, ';
                 }
+
+                // if (!empty($labels)) {
+                //     foreach ($labels as $label) {
+                //         return $label;
+                //     }
+                // }
 
                 $data = [
                     'id' => $contact->id,
@@ -186,16 +275,13 @@ class ContactsController extends Controller
                     'created_at' => $contact->created_at,
                     'updated_at' => $contact->updated_at,
                     'company_id' => $contact->company_id,
-                    'supplier_id' => $supplierId
+                    'supplier_id' => $supplierId,
+                    'contact_label' => $contact->contact_label
 
                 ];
 
                 array_push($datas, $data);
             }
-
-
-
-
 
             return response()->json([
                 'data' => $datas,
@@ -309,7 +395,6 @@ class ContactsController extends Controller
     public function store(Request $request)
     {
         try {
-            // return $request->contacts[0]['first_name'];
             $owner = 0;
             $tenant = 0;
             $supplier = 0;
@@ -373,9 +458,8 @@ class ContactsController extends Controller
                             'abn'                   => $request->abn,
                             'notes'                 => $request->notes,
                             'company_id'            => auth('api')->user()->company_id,
-                            'owner' => 1,
                         ]);
-                        $contactId=$contacts->id;
+                        $contactId = $contacts->id;
                         $contact_details_delete = ContactDetails::where('contact_id', $request->contact_id)->delete();
                         $contact_physical_delete = ContactPhysicalAddress::where('contact_id', $request->contact_id)->delete();
                         $contact_postal_delete = ContactPostalAddress::where('contact_id', $request->contact_id)->delete();
@@ -394,15 +478,15 @@ class ContactsController extends Controller
                                 $contact_details->home_phone            = $contact['home_phone'];
                                 $contact_details->email                 = $contact['email'];
                                 $contact_details->primary               = $contact['primary'];
-                                if ($contact['email1_status']=='1') {
+                                if ($contact['email1_status'] == '1') {
                                     $contact_details->email1                = $contact['email1'];
                                     $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
                                 }
-                                if ($contact['email2_status']=='1') {
+                                if ($contact['email2_status'] == '1') {
                                     $contact_details->email2                = $contact['email2'];
                                     $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
                                 }
-                                if ($contact['email3_status']=='1') {
+                                if ($contact['email3_status'] == '1') {
                                     $contact_details->email3                = $contact['email3'];
                                     $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
                                 }
@@ -468,7 +552,7 @@ class ContactsController extends Controller
                         $contacts->company_id            = auth('api')->user()->company_id;
                         $contacts->save();
 
-                        $contactId=$contacts->id;
+                        $contactId = $contacts->id;
 
                         foreach ($request->contacts as $key => $contact) {
                             if ($contact['deleted'] != true) {
@@ -484,15 +568,15 @@ class ContactsController extends Controller
                                 $contact_details->home_phone            = $contact['home_phone'];
                                 $contact_details->email                 = $contact['email'];
                                 $contact_details->primary               = $contact['primary'];
-                                if ($contact['email1_status']=='1') {
+                                if ($contact['email1_status'] == '1') {
                                     $contact_details->email1                = $contact['email1'];
                                     $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
                                 }
-                                if ($contact['email2_status']=='1') {
+                                if ($contact['email2_status'] == '1') {
                                     $contact_details->email2                = $contact['email2'];
                                     $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
                                 }
-                                if ($contact['email3_status']=='1') {
+                                if ($contact['email3_status'] == '1') {
                                     $contact_details->email3                = $contact['email3'];
                                     $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
                                 }
@@ -564,33 +648,60 @@ class ContactsController extends Controller
             $supplier = 0;
             $buyer = 0;
             $seller = 0;
+            $contact_archive_status = false;
+            $contact_archive_status_owner = NULL;
+            $contact_archive_status_tenant = NULL;
+            $contact_archive_status_supplier = NULL;
+            $contact_archive_status_seller = NULL;
 
             $contact = Contacts::with('contactDetails', 'contactDetails.contactDetailsPhysicalAddress', 'contactDetails.contactDetailsPostalAddress', 'contactPhysicalAddress', 'contactPostalAddress', 'contactDetails.contactDetailsCommunications', 'contact_label')->findOrFail($id);
             $contactPhysicalAddress = $contact->contactPhysicalAddress;
             $contactPostalAddress = $contact->contactPostalAddress;
             $contactCommunications = $contact->contactCommunications;
 
-            // $property_owner = $contact->property_owner;
-            // $property_tenant = $contact->property_tenant;
-            // $property_supplier = $contact->property_supplier;
-
             if ($contact->owner == 1) {
                 $owner = OwnerContact::with('OwnerProperty', 'OwnerProperty.ownerProperties', 'OwnerProperty.ownerProperties.currentOwnerFolio', 'OwnerFees', 'OwnerFolio', 'ownerPropertyFees', 'ownerPayment', 'user.user_plan.plan.details')->where('contact_id', $id)->get();
+                foreach ($owner as $value) {
+                    if (!empty($value->OwnerFolio)) {
+                        if ($value->OwnerFolio->archive == false) $contact_archive_status_owner = false;
+                        else $contact_archive_status_owner = true;
+                    }
+                }
             }
             if ($contact->tenant == 1) {
                 $tenant = TenantContact::with('TenantProperty', 'TenantProperty.tenantProperties', 'TenantFolio', 'TenantProperty')->where('contact_id', $id)->get();
+                foreach ($tenant as $value) {
+                    if (!empty($value->TenantFolio)) {
+                        if ($value->TenantFolio->archive == false) $contact_archive_status_tenant = false;
+                        else $contact_archive_status_tenant = true;
+                    }
+                }
             }
             if ($contact->supplier == 1) {
                 $supplier = SupplierContact::with('SupplierDetails', 'SupplierDetails.supplierAccount', 'supplierPayments')->where('contact_id', $id)->withSum('total_bills_amount', 'amount')->withSum('total_due_invoice', 'amount')->withSum('total_part_paid_invoice', 'paid')->get();
+                foreach ($supplier as $value) {
+                    if (!empty($value->SupplierDetails)) {
+                        if ($value->SupplierDetails->archive == false) $contact_archive_status_supplier = false;
+                        else $contact_archive_status_supplier = true;
+                    }
+                }
             }
             if ($contact->seller == 1) {
-                $seller = SellerContact::with('sellerFolio', 'sellerPayment', 'sellerProperty', 'property', 'propertySalesAgreement')->where('contact_id', $id)->get();
+                $seller = SellerContact::with('sellerFolio', 'sellerPayment', 'sellerProperty', 'property', 'propertySalesAgreement.buyerContact.buyerFolio')->where('contact_id', $id)->get();
+                foreach ($seller as $value) {
+                    if (!empty($value->sellerFolio)) {
+                        if ($value->sellerFolio->archive == false) $contact_archive_status_seller = false;
+                        else $contact_archive_status_seller = true;
+                    }
+                }
             }
             if ($contact->buyer == 1) {
-                $buyer = BuyerContact::with('buyerFolio', 'buyerPayment', 'buyerProperty', 'property')->where('contact_id', $id)->get();
+                $buyer = BuyerContact::with('buyerFolio', 'buyerPayment', 'buyerProperty', 'property.salesAgreemet.salesContact.sellerFolio')->where('contact_id', $id)->get();
             }
 
-
+            if (($contact_archive_status_owner !== NULL && $contact_archive_status_owner == false) || ($contact_archive_status_tenant !== NULL && $contact_archive_status_tenant == false) || ($contact_archive_status_supplier !== NULL && $contact_archive_status_supplier == false) || ($contact_archive_status_seller !== NULL && $contact_archive_status_seller == false)) {
+                $contact_archive_status = false;
+            } else $contact_archive_status = true;
             return response()->json([
                 'data' => $contact,
                 'owner' => $owner,
@@ -601,6 +712,7 @@ class ContactsController extends Controller
                 'contactCommunication' => $contactCommunications,
                 'seller' => $seller,
                 'buyer' => $buyer,
+                'contact_archive_status' => $contact_archive_status,
                 'status' => 'Success',
             ], 200);
         } catch (\Exception $ex) {
@@ -871,15 +983,15 @@ class ContactsController extends Controller
                             $contact_details->home_phone            = $contact['home_phone'];
                             $contact_details->email                 = $contact['email'];
                             $contact_details->primary               = $contact['primary'];
-                            if ($contact['email1_status']=='1') {
+                            if ($contact['email1_status'] == '1') {
                                 $contact_details->email1                = $contact['email1'];
                                 $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
                             }
-                            if ($contact['email2_status']=='1') {
+                            if ($contact['email2_status'] == '1') {
                                 $contact_details->email2                = $contact['email2'];
                                 $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
                             }
-                            if ($contact['email3_status']=='1') {
+                            if ($contact['email3_status'] == '1') {
                                 $contact_details->email3                = $contact['email3'];
                                 $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
                             }
@@ -944,7 +1056,14 @@ class ContactsController extends Controller
      */
     public function destroy($id)
     {
-        //
+        try {
+            $contact = Contacts::where('id', $id)->delete();
+            return response()->json([
+                'status' => 'Success',
+            ], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
+        }
     }
 
     public function contactType($type)
@@ -995,37 +1114,249 @@ class ContactsController extends Controller
             $data = '';
 
             $offset = 0;
-            $offset = $page_qty * ($request->page - 1);
+            $offset = intval($page_qty) * intval(($request->page - 1));
+
+            $labels = json_decode($request->labels, true);
 
             if ($type === "Owner") {
                 if (auth('api')->user()->user_type == "Property Manager") {
-                    $data = Contacts::where('company_id', auth('api')->user()->company_id)->whereOwner(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('ownerContact', function ($query) {
+                                $query->whereHas('multipleOwnerFolios', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereOwner(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->whereOwner(1)->whereHas('ownerContact', function ($query) {
+                            $query->whereHas('multipleOwnerFolios', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 } else {
-                    $data = Contacts::where('email', auth('api')->user()->email)->whereOwner(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('ownerContact', function ($query) {
+                                $query->whereHas('multipleOwnerFolios', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereOwner(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->whereOwner(1)->whereHas('ownerContact', function ($query) {
+                            $query->whereHas('multipleOwnerFolios', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 }
             } else if ($type === "Tenant") {
                 if (auth('api')->user()->user_type == "Property Manager") {
-                    $data = Contacts::where('company_id', auth('api')->user()->company_id)->whereTenant(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('property_tenant', function ($query) {
+                                $query->whereHas('tenantFolio', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereTenant(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->whereTenant(1)->whereHas('property_tenant', function ($query) {
+                            $query->whereHas('tenantFolio', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 } else {
-                    $data = Contacts::where('email', auth('api')->user()->email)->whereTenant(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('property_tenant', function ($query) {
+                                $query->whereHas('tenantFolio', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereTenant(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->whereTenant(1)->whereHas('property_tenant', function ($query) {
+                            $query->whereHas('tenantFolio', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 }
             } else if ($type === "Supplier") {
                 if (auth('api')->user()->user_type == "Property Manager") {
-                    $data = Contacts::where('company_id', auth('api')->user()->company_id)->whereSupplier(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('property_supplier', function ($query) {
+                                $query->whereHas('supplierDetails', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereSupplier(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->whereSupplier(1)->whereHas('property_supplier', function ($query) {
+                            $query->whereHas('supplierDetails', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');;
+                    }
                 } else {
-                    $data = Contacts::where('email', auth('api')->user()->email)->whereSupplier(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('property_supplier', function ($query) {
+                                $query->whereHas('supplierDetails', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereSupplier(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->whereSupplier(1)->whereHas('property_supplier', function ($query) {
+                            $query->whereHas('supplierDetails', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 }
             } else if ($type === "Seller") {
                 if (auth('api')->user()->user_type == "Property Manager") {
-                    $data = Contacts::where('company_id', auth('api')->user()->company_id)->whereSeller(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('property_seller', function ($query) {
+                                $query->whereHas('sellerFolio', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereSeller(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->whereSeller(1)->whereHas('property_seller', function ($query) {
+                            $query->whereHas('sellerFolio', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 } else {
-                    $data = Contacts::where('email', auth('api')->user()->email)->whereSeller(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereHas('property_seller', function ($query) {
+                                $query->whereHas('sellerFolio', function ($query) {
+                                    $query->where('archive', false);
+                                });
+                            })
+                            ->whereSeller(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->whereSeller(1)->whereHas('property_seller', function ($query) {
+                            $query->whereHas('sellerFolio', function ($query) {
+                                $query->where('archive', false);
+                            });
+                        })->with('contact_label');
+                    }
                 }
             } else if ($type === "Buyer") {
                 if (auth('api')->user()->user_type == "Property Manager") {
-                    $data = Contacts::where('company_id', auth('api')->user()->company_id)->whereBuyer(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereBuyer(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', false)->whereBuyer(1)->with('contact_label');
+                    }
                 } else {
-                    $data = Contacts::where('email', auth('api')->user()->email)->whereBuyer(1);
+                    if (!empty($labels)) {
+                        $data = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', false)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->whereBuyer(1)->with('contact_label');
+                    } else {
+                        $data = Contacts::where('email', auth('api')->user()->email)->where('archive', false)->whereBuyer(1)->with('contact_label');
+                    }
+                }
+            } else if ($type === "Archive") {
+                if (auth('api')->user()->user_type == "Property Manager") {
+                    if (!empty($labels)) {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)
+                            ->where('archive', true)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->with('contact_label');
+                    } else {
+                        $data = Contacts::where('company_id', auth('api')->user()->company_id)->where('archive', true)->with('contact_label');
+                    }
+                } else {
+                    if (!empty($labels)) {
+                        $data = Contacts::where('email', auth('api')->user()->email)
+                            ->where('archive', true)
+                            ->when(!empty($labels), function ($query) use ($labels) {
+                                $query->whereHas('contact_label', function ($query) use ($labels) {
+                                    $query->whereIn('labels', $labels);
+                                });
+                            })
+                            ->with('contact_label');
+                    } else {
+                        $data = Contacts::where('email', auth('api')->user()->email)->where('archive', true)->with('contact_label');
+                    }
                 }
             }
 

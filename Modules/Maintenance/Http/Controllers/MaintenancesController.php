@@ -35,8 +35,11 @@ use Modules\Settings\Entities\SettingBrandStatement;
 use Modules\Settings\Entities\CompanySetting;
 use Modules\Settings\Entities\BrandSettingLogo;
 use Illuminate\Support\Facades\Notification;
+use Modules\Maintenance\Entities\MaintenanceImages;
 use Modules\Notification\Notifications\NotifyAdminOfNewComment;
 use stdClass;
+
+
 
 use function PHPUnit\Framework\isNull;
 
@@ -47,13 +50,12 @@ class MaintenancesController extends Controller
      * @return Renderable
      */
     public function index(Request $request)
-
     {
         try {
-            $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->get();
+            $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->get();
             // $properties = Properties::where('property_id', $maintenance->id)->get();
             // $property = Properties::where('property_id')->pluck('reference');
-            return response()->json(['data' => $maintenance,  'message' => 'Successfull'], 200);
+            return response()->json(['data' => $maintenance, 'message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
@@ -65,27 +67,27 @@ class MaintenancesController extends Controller
         $maintenance = null;
         try {
             if ($request->status == "Active") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', '!=', 'Closed')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', '!=', 'Closed')->get();
             }
             if ($request->status == "Reported") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Reported')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Reported')->get();
             }
             if ($request->status == "Quoted") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Quoted')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Quoted')->get();
             }
             if ($request->status == "Approved") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Approved')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Approved')->get();
             }
             if ($request->status == "Assigned") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Assigned')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Assigned')->get();
             }
             if ($request->status == "Finished") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Finished')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Finished')->get();
             }
             if ($request->status == "Closed") {
-                $maintenance = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status',  'Closed')->get();
+                $maintenance = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Closed')->get();
             }
-            return response()->json(['data' => $maintenance,  'message' => 'Successfull'], 200);
+            return response()->json(['data' => $maintenance, 'message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
@@ -113,21 +115,21 @@ class MaintenancesController extends Controller
             $query = '';
 
             if ($request->status == "Active") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')
                     ->where('company_id', auth('api')->user()->company_id)
                     ->where('status', '!=', 'Closed');
             } else if ($request->status == "Reported") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Reported');
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Reported');
             } else if ($request->status == "Quoted") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Quoted');
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Quoted');
             } else if ($request->status == "Approved") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Approved');
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Approved');
             } else if ($request->status == "Assigned") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Assigned');
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Assigned');
             } else if ($request->status == "Finished") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Finished');
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Finished');
             } else if ($request->status == "Closed") {
-                $query = Maintenance::select('id', 'status', 'summary',  'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status',  'Closed');
+                $query = Maintenance::select('id', 'status', 'summary', 'created_at', 'property_id', 'due_by')->where('company_id', auth('api')->user()->company_id)->where('status', 'Closed');
             }
 
             if (is_null($request->search) != 1) {
@@ -163,7 +165,7 @@ class MaintenancesController extends Controller
             }
 
 
-            return response()->json(['data' => $maintenance, 'length' => count($maintenanceAll), 'page' => $request->page, 'sizePerPage' => $request->sizePerPage,  'message' => 'Successfull'], 200);
+            return response()->json(['data' => $maintenance, 'length' => count($maintenanceAll), 'page' => $request->page, 'sizePerPage' => $request->sizePerPage, 'message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
@@ -173,7 +175,7 @@ class MaintenancesController extends Controller
     {
         try {
             $property = Properties::with('owner', 'owner.ownerFolio', 'tenant', 'tenant.tenantFolio')->where('id', $id)->first();
-            return response()->json(['data' => $property,  'message' => 'Successfull'], 200);
+            return response()->json(['data' => $property, 'message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
@@ -186,7 +188,7 @@ class MaintenancesController extends Controller
             $maintenance = Maintenance::with('jobs_images')->where('property_id', $id)->get();
             // $properties = Properties::where('property_id', $maintenance->id)->get();
             // $property = Properties::where('property_id')->pluck('reference');
-            return response()->json(['data' => $maintenance,  'message' => 'Successfull'], 200);
+            return response()->json(['data' => $maintenance, 'message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
@@ -212,7 +214,7 @@ class MaintenancesController extends Controller
             $attributeNames = array(
                 'property_id' => $request->property_id,
                 'reported_by' => $request->reported_by,
-                'company_id'    => auth('api')->user()->company_id,
+                'company_id' => auth('api')->user()->company_id,
                 'access' => $request->access,
                 'due_by' => $request->due_by ? $request->due_by : null,
                 'manager_id' => $request->manager_id,
@@ -247,10 +249,10 @@ class MaintenancesController extends Controller
                 $maintenance->description = $request->description ? $request->description : null;
                 $maintenance->work_order_notes = $request->work_order_notes ? $request->work_order_notes : null;
                 $maintenance->status = "Reported";
-                $maintenance->company_id      = auth('api')->user()->company_id;
+                $maintenance->company_id = auth('api')->user()->company_id;
                 $maintenance->tenant_id = $pt;
                 $maintenance->save();
-                $maintenanceId                       = $maintenance->id;
+                $maintenanceId = $maintenance->id;
 
                 // $maintenanceActivity = new PropertyActivity();
                 // $maintenanceActivity->property_id = $request->property_id;
@@ -309,24 +311,20 @@ class MaintenancesController extends Controller
 
 
 
-                $message_action_name = "Maintenance";
-                // $message_trigger_to = 'Tenant';
-                // $messsage_trigger_point = 'Reported';
-                $messsage_trigger_point = 'New Maintenance Created';
+                $message_action_name = "Job";
+                $messsage_trigger_point = 'Reported';
                 $data = [
                     "property_id" => $request->property_id,
                     "id" => $maintenance->id,
-                    "status" => "job Created",
+                    "status" => "Reported",
                     "owner_contact_id" => $request->owner_id,
                     "tenant_contact_id" => $request->tenant_id
 
                 ];
+
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
 
-                // $value = $activityMessageTrigger->trigger();
-                $value = $activityMessageTrigger->trigger();
-
-                // });
                 if ($request->reminder === "reminder") {
                     $reminder = ReminderProperties::where('id', $request->property_reminder_id)->first();
                     if ($reminder) {
@@ -347,11 +345,10 @@ class MaintenancesController extends Controller
     public function tenantStore(Request $request)
     {
         try {
-            // return $request;
             $attributeNames = array(
                 'property_id' => $request->property_id,
                 'reported_by' => $request->reported_by,
-                'company_id'    => auth('api')->user()->company_id,
+                'company_id' => auth('api')->user()->company_id,
                 'access' => $request->access,
                 'due_by' => $request->due_by ? $request->due_by : null,
                 'manager_id' => $request->manager_id,
@@ -386,10 +383,26 @@ class MaintenancesController extends Controller
                 $maintenance->description = $request->description ? $request->description : null;
                 $maintenance->work_order_notes = $request->work_order_notes ? $request->work_order_notes : null;
                 $maintenance->status = "Reported";
-                $maintenance->company_id      = $properties->company_id;
+                $maintenance->company_id = $properties->company_id;
                 $maintenance->tenant_id = $pt;
                 $maintenance->save();
-                $maintenanceId  = $maintenance->id;
+                $maintenanceId = $maintenance->id;
+
+                if ($request->file('image')) {
+                    foreach ($request->file('image') as $file) {
+                        $imageUpload = new MaintenanceImages();
+                        $filename = date('YmdHi') . $file->getClientOriginalName();
+                        // $file->move(public_path('public/Image'), $filename);
+                        $path = config('app.asset_s') . '/Image';
+                        $filename_s3 = Storage::disk('s3')->put($path, $file);
+                        // $imageUpload->property_image = $filename_s3;
+                        // $imageUpload->image_path = config('app.api_url_server') . $filename;
+                        $imageUpload->image_path = config('app.api_url_server') . $filename_s3;
+                        $imageUpload->image_name = config('app.api_url_server') . $filename_s3;
+                        $imageUpload->job_id = $maintenanceId;
+                        $imageUpload->save();
+                    }
+                }
 
                 $maintenanceActivity = new PropertyActivity();
                 $maintenanceActivity->property_id = $request->property_id;
@@ -411,7 +424,7 @@ class MaintenancesController extends Controller
 
                 $maintenanceActivity_email_template = new PropertyActivityEmail();
                 $maintenanceActivity_email_template->email_to = $request->owner_email;
-                $maintenanceActivity_email_template->email_from = "no-reply@cliqproperty.com";
+                $maintenanceActivity_email_template->email_from = "no-reply@myday.com";
                 $maintenanceActivity_email_template->subject = "Owner Maintenance Request";
                 $maintenanceActivity_email_template->email_body = "You have an Maintenance Request for owner";
                 $maintenanceActivity_email_template->email_status = "pending";
@@ -421,16 +434,16 @@ class MaintenancesController extends Controller
                 $messageWithMail = new MessageWithMail();
 
                 $messageWithMail->property_id = $request->property_id;
-                $messageWithMail->to       = $request->owner_email ? $request->owner_email : "no_owner_email@mail.com";
-                $messageWithMail->from     = "no-reply@cliqproperty.com";
-                $messageWithMail->subject  = "Owner Maintenance Request";
-                $messageWithMail->body     = "You have an Maintenance Request for owner";
-                $messageWithMail->status   = "Outbox";
+                $messageWithMail->to = $request->owner_email ? $request->owner_email : "no_owner_email@mail.com";
+                $messageWithMail->from = "no-reply@myday.com";
+                $messageWithMail->subject = "Owner Maintenance Request";
+                $messageWithMail->body = "You have an Maintenance Request for owner";
+                $messageWithMail->status = "Outbox";
                 $messageWithMail->save();
 
                 $maintenanceActivity_email_template = new PropertyActivityEmail();
                 $maintenanceActivity_email_template->email_to = $request->tenant_email;
-                $maintenanceActivity_email_template->email_from = "cliqproperty";
+                $maintenanceActivity_email_template->email_from = "myday";
                 $maintenanceActivity_email_template->subject = "Tenant Maintenance Request";
                 $maintenanceActivity_email_template->email_body = "You have an Maintenance Request Tenant";
                 $maintenanceActivity_email_template->email_status = "pending";
@@ -438,17 +451,17 @@ class MaintenancesController extends Controller
                 $maintenanceActivity_email_template->save();
 
                 $messageWithMail->property_id = $request->property_id;
-                $messageWithMail->to       = $request->tenant_email ? $request->tenant_email : "no_tenant_email@mail.com";
-                $messageWithMail->from     = "no-reply@cliqproperty.com";
-                $messageWithMail->subject  = "Tenant Maintenance Request";
-                $messageWithMail->body     = "You have an Maintenance Request Tenant";
-                $messageWithMail->status   = "Outbox";
+                $messageWithMail->to = $request->tenant_email ? $request->tenant_email : "no_tenant_email@mail.com";
+                $messageWithMail->from = "no-reply@myday.com";
+                $messageWithMail->subject = "Tenant Maintenance Request";
+                $messageWithMail->body = "You have an Maintenance Request Tenant";
+                $messageWithMail->status = "Outbox";
                 $messageWithMail->save();
                 $userFirstName = auth('api')->user()->first_name;
                 $userLastName = auth('api')->user()->last_name;
                 $notify = (object) [
                     "send_user_id" => auth('api')->user()->id,
-                    "send_user_name" =>  $userFirstName . " " . $userLastName,
+                    "send_user_name" => $userFirstName . " " . $userLastName,
                     "type" => "New Maintenance request from tenant",
                     "date" => $date,
                     "comment" => "New Maintenance request from tenant",
@@ -460,11 +473,20 @@ class MaintenancesController extends Controller
                     "mail_id" => $request->mail_id,
                 ];
                 $admin = User::where('id', $mangerId)->firstOrFail();
-                // return $admin;
 
-                // return $admin;
                 Notification::send($admin, new NotifyAdminOfNewComment($notify));
-                // });
+
+                $message_action_name = "Job";
+                $messsage_trigger_point = 'Pending';
+                $data = [
+                    "property_id" => $request->property_id,
+                    "id" => $maintenance->id,
+                    "status" => "Pending",
+                    "owner_contact_id" => $request->owner_id,
+                    "tenant_contact_id" => $request->tenant_id
+                ];
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
 
 
                 return response()->json(['job_id' => $maintenanceId, 'message' => 'successful'], 200);
@@ -589,22 +611,21 @@ class MaintenancesController extends Controller
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-                // DB::transaction(function () use ($request) {
-                // $maintenance = Maintenance::where('id', $request->job_id)->update(["status" => "Approved"]);
                 $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+
                 $tenantID = $maintenance->tenant_id;
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->status = "Approved";
                 $maintenance->update();
-                $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Approved"]);
 
+                PropertyActivity::where('id', $request->job_id)->update(["status" => "Approved"]);
 
-                $message_action_name = "Maintenance";
-                $messsage_trigger_point = 'Approved';
+                $message_action_name = "Job";
+                $messsage_trigger_point = 'Assigned';
                 $data = [
                     "property_id" => $property_id,
                     "schedule_date" => $request->ins_date,
-                    "status" => "Approved",
+                    "status" => "Assigned",
                     "tenant_contact_id" => $tenantID,
                     "id" => $request->job_id,
                 ];
@@ -679,26 +700,25 @@ class MaintenancesController extends Controller
 
                 $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->first();
                 $tenantID = $maintenance->tenant_id;
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->status = "Reported";
                 $maintenance->update();
 
-                $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Reported"]);
-                $message_action_name = "Maintenance";
+                PropertyActivity::where('id', $request->job_id)->update(["status" => "Reported"]);
+                
+                $message_action_name = "Job";
                 $messsage_trigger_point = 'Unapprove';
                 $data = [
                     "property_id" => $property_id,
                     "schedule_date" => $request->ins_date,
-                    "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
+                    "start_time" => date('h:i:s a', strtotime($request->start_time)),
                     "tenant_contact_id" => $tenantID,
                     "id" => $request->job_id,
                 ];
 
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
 
-                $value = $activityMessageTrigger->trigger();
-
-
+                $activityMessageTrigger->trigger();
 
                 return response()->json(['job_id' => $request->job_id, 'message' => 'successfull'], 200);
             }
@@ -724,22 +744,22 @@ class MaintenancesController extends Controller
                 $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->first();
                 $tenantID = $maintenance->tenant_id;
                 $maintenance->status = "Reported";
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->update();
                 $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Reported"]);
                 $quote = MaintenanceQuote::where('job_id', $request->job_id);
                 $quote->update([
                     'status' => "unquoted"
                 ]);
-                $message_action_name = "Maintenance";
+                $message_action_name = "Job";
                 $messsage_trigger_point = 'Unquoted';
                 $data = [
 
                     "property_id" => $property_id,
                     "schedule_date" => $request->ins_date,
-                    "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
-                    // "status" => "Unquoted",
-                    "tenant_contact_id" =>  $tenantID,
+                    "start_time" => date('h:i:s a', strtotime($request->start_time)),
+                    "status" => "Unquoted",
+                    "tenant_contact_id" => $tenantID,
                     "id" => $request->job_id,
                 ];
 
@@ -762,6 +782,7 @@ class MaintenancesController extends Controller
             $attributesNames = array(
                 'job_id' => $request->job_id
             );
+
             $validator = Validator::make($attributesNames, [
                 'job_id'
             ]);
@@ -769,36 +790,27 @@ class MaintenancesController extends Controller
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-
-                $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->first();
+                $maintenance = Maintenance::where('id', $request->job_id)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->first();
                 $tenantID = $maintenance->tenant_id;
                 $maintenance->status = "Closed";
                 $maintenance->completed = $date;
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->update();
+                PropertyActivity::where('id', $request->job_id)->update(["status" => "Closed"]);
 
-                // $maintenance = Maintenance::where('id', $request->job_id)->update([
-                //     "status" => "Closed",
-                //     "completed" => $date
-                // ]);
-                $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Closed"]);
-                $message_action_name = "Maintenance";
-                $messsage_trigger_point = 'Closed';
+
+                $message_action_name = "Job";
+                $messsage_trigger_point = 'Completed';
                 $data = [
-
-
-
                     "property_id" => $property_id,
-                    "schedule_date" => $request->ins_date,
-                    // "status" => "Closed",
-                    "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
-                    "tenant_contact_id" => $tenantID,
+                    "status" => "Completed",
                     "id" => $request->job_id,
                 ];
 
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
+                $activityMessageTrigger->trigger();
 
 
                 return response()->json([
@@ -834,7 +846,7 @@ class MaintenancesController extends Controller
                 $tenantID = $maintenance->tenant_id;
                 $maintenance->status = "Assigned";
                 $maintenance->completed = null;
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->update();
 
                 // $maintenance = Maintenance::where('id', $request->job_id)->update([
@@ -883,18 +895,14 @@ class MaintenancesController extends Controller
                 $tenantID = $maintenance->tenant_id;
                 $maintenance->status = "Finished";
 
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->update();
 
-                // $maintenance = Maintenance::where('id', $request->job_id)->update(["status" => "Finished"]);
-                // $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Finished"]);
-                $message_action_name = "Maintenance";
+
+                $message_action_name = "Job";
                 $messsage_trigger_point = 'Finished';
                 $data = [
-                    // "property_id" => $pro["property_id"],
                     "property_id" => $property_id,
-                    // "schedule_date" => $request->ins_date,
-                    // "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
                     "status" => "Finished",
                     "tenant_contact_id" => $tenantID,
                     "id" => $request->job_id,
@@ -902,8 +910,7 @@ class MaintenancesController extends Controller
 
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
 
-                $value = $activityMessageTrigger->trigger();
-
+                $activityMessageTrigger->trigger();
 
                 return response()->json(['job_id' => $request->job_id, 'message' => 'successfull'], 200);
             }
@@ -933,14 +940,14 @@ class MaintenancesController extends Controller
                 // $maintenance->status = "Assigned";
                 $maintenance->status = "Assigned";
 
-                $property_id =  $maintenance['property_id'];
+                $property_id = $maintenance['property_id'];
                 $maintenance->update();
                 $message_action_name = "Maintenance";
                 $messsage_trigger_point = 'Unfinished';
                 $data = [
                     // "property_id" => $pro["property_id"],
                     "schedule_date" => $request->ins_date,
-                    "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
+                    "start_time" => date('h:i:s a', strtotime($request->start_time)),
                     "tenant_contact_id" => $request->tenant_contact_id,
                     "id" => $request->job_id,
                 ];
@@ -967,12 +974,12 @@ class MaintenancesController extends Controller
         try {
             $attributeNames = array(
                 'property_activity_email_id' => $request->property_activity_email_id,
-                'to'          => $request->a_to,
-                'subject'     => $request->subject ? $request->subject : null,
-                'body'        => $request->body ? $request->body : null,
+                'to' => $request->a_to,
+                'subject' => $request->subject ? $request->subject : null,
+                'body' => $request->body ? $request->body : null,
             );
             $validator = Validator::make($attributeNames, [
-                'to'    =>  'required',
+                'to' => 'required',
                 'property_activity_email_id' => 'required',
             ]);
             if ($validator->fails()) {
@@ -1003,7 +1010,7 @@ class MaintenancesController extends Controller
         try {
 
             $data = [];
-            $maintenance = Maintenance::where('id', $id)->with('property.agent', 'property.tenantOne',  'maintenanceAssign.supplier.company', 'property.owners')->first();
+            $maintenance = Maintenance::where('id', $id)->with('property.agent', 'property.tenantOne', 'maintenanceAssign.supplier.company', 'property.owners')->first();
             $propertyId = $maintenance->property->id;
             $ownerEmail = $maintenance->property->owner_email;
             $supplier_company_name = $maintenance->maintenanceAssign->supplier->company->company_name;
@@ -1137,7 +1144,7 @@ class MaintenancesController extends Controller
                     $docUpload->property_id = $propertyId;
                     $docUpload->generated = "Generated";
                     $docUpload->name = $filename;
-                    $docUpload->company_id     = auth('api')->user()->company_id;
+                    $docUpload->company_id = auth('api')->user()->company_id;
                     $docUpload->save();
                     // $pDocUpload = new PropertyDocs();
                     // $pDocUpload->doc_path = $filename_s3 ? $path : null;
@@ -1174,9 +1181,11 @@ class MaintenancesController extends Controller
             $maintenanceDoc = 0;
             $company_id = Auth::guard('api')->user()->company_id;
             $inspectionTaskMaintenance = InspectionTaskMaintenanceDoc::where('job_id', $id)->with(
-                ['property' => function ($query) {
-                    $query->addSelect('id', 'reference');
-                }]
+                [
+                    'property' => function ($query) {
+                        $query->addSelect('id', 'reference');
+                    }
+                ]
             )->get();
             $billDoc = Bill::where('company_id', $company_id)
                 ->where('maintenance_id', $id)
@@ -1236,9 +1245,11 @@ class MaintenancesController extends Controller
                 // return $combinedDocs;
             } else {
 
-                $inspectionTaskMaintenance = InspectionTaskMaintenanceDoc::where('job_id', $id)->where('company_id', $company_id)->where('generated', '!=', null)->with(['property' => function ($query) {
-                    $query->addSelect('id', 'reference');
-                }])->get();
+                $inspectionTaskMaintenance = InspectionTaskMaintenanceDoc::where('job_id', $id)->where('company_id', $company_id)->where('generated', '!=', null)->with([
+                    'property' => function ($query) {
+                        $query->addSelect('id', 'reference');
+                    }
+                ])->get();
 
 
                 $billDoc = Bill::where('maintenance_id', $id)->where('company_id', $company_id)

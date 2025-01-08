@@ -14,9 +14,7 @@ use Modules\Inspection\Entities\InspectionTaskMaintenanceDoc;
 use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 use Modules\Properties\Entities\Properties;
 use Modules\Properties\Entities\PropertyActivity;
-use Modules\Settings\Entities\LabelSetting;
 use Modules\Tasks\Entities\Task;
-use Modules\Tasks\Entities\TaskDoc;
 
 class TasksController extends Controller
 {
@@ -40,16 +38,16 @@ class TasksController extends Controller
             ];
 
             return response()->json([
-                'columns'    => $columns,
+                'columns' => $columns,
                 'closedTask' => ['data' => $closedTask],
-                'message'    => 'Successfull'
+                'message' => 'Successfull'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $th->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -60,15 +58,15 @@ class TasksController extends Controller
             $closedTask = Task::where('company_id', auth('api')->user()->company_id)->where('status', 'closed')->with('label')->get();
             return response()->json([
 
-                'data' =>  $closedTask,
-                'message'    => 'Successfull'
+                'data' => $closedTask,
+                'message' => 'Successfull'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $th->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -77,9 +75,12 @@ class TasksController extends Controller
     {
         try {
             // $jobActivity = PropertyActivity::where('maintenance_id', $id)->with('task', 'inspection', 'maintenance', 'listing', 'property_activity_email')->get();
-            $taskActivity = PropertyActivity::where('task_id', $id)->with(['task',  'property_activity_email' => function ($query) {
-                $query->where('email_status', 'pending');
-            }])->get();
+            $taskActivity = PropertyActivity::where('task_id', $id)->with([
+                'task',
+                'property_activity_email' => function ($query) {
+                    $query->where('email_status', 'pending');
+                }
+            ])->get();
             return response()->json([
                 "data" => $taskActivity,
                 "message" => "Successful"
@@ -146,18 +147,18 @@ class TasksController extends Controller
 
             return response()->json([
                 'data' => $activeTask,
-                'message'    => 'Successfull',
+                'message' => 'Successfull',
                 'length' => count($activeTaskAll),
                 'page' => $request->page,
                 'sizePerPage' => $request->sizePerPage,
-                'due'=>$due,
+                'due' => $due,
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $th->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -170,14 +171,14 @@ class TasksController extends Controller
 
             return response()->json([
                 'data' => $activeTask,
-                'message'    => 'Successfull'
+                'message' => 'Successfull'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $th->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -233,11 +234,11 @@ class TasksController extends Controller
 
             return response()->json([
                 'data' => $dueTask,
-                'message'    => 'Successfull',
+                'message' => 'Successfull',
                 'length' => count($dueTaskAll),
                 'page' => $request->page,
                 'sizePerPage' => $request->sizePerPage,
-                'due'=>$due,
+                'due' => $due,
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
@@ -253,14 +254,14 @@ class TasksController extends Controller
 
             return response()->json([
                 'data' => $dueLaterTask,
-                'message'    => 'Successfull'
+                'message' => 'Successfull'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $th->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -317,11 +318,11 @@ class TasksController extends Controller
 
             return response()->json([
                 'data' => $dueLaterTask,
-                'message'    => 'Successfull',
+                'message' => 'Successfull',
                 'length' => count($dueLaterTaskAll),
                 'page' => $request->page,
                 'sizePerPage' => $request->sizePerPage,
-                'due'=>$due,
+                'due' => $due,
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
@@ -382,8 +383,8 @@ class TasksController extends Controller
                 'length' => count($closedTaskAll),
                 'page' => $request->page,
                 'sizePerPage' => $request->sizePerPage,
-                'message'    => 'Successfull',
-                'due'=>$due,
+                'message' => 'Successfull',
+                'due' => $due,
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
@@ -409,32 +410,29 @@ class TasksController extends Controller
         $date = date("Y-m-d");
         try {
             $attriuteName = array(
-                'property_id' =>  $request->property_id,
-                'contact_id'  =>  $request->contact_id,
-                'manager_id'  =>  $request->manager_id,
-                'company_id'  =>  auth('api')->user()->company_id,
-                'due_by'      =>  $request->due_by,
-                'summary'     =>  $request->summary,
-                'description' =>  $request->description
-
+                'property_id' => $request->property_id,
+                'contact_id' => $request->contact_id,
+                'manager_id' => $request->manager_id,
+                'company_id' => auth('api')->user()->company_id,
+                'due_by' => $request->due_by,
+                'summary' => $request->summary,
+                'description' => $request->description
             );
             $validator = Validator::make($attriuteName, [
                 'property_id' => 'required',
-                'summary'     => 'required'
+                'summary' => 'required'
             ]);
             if ($validator->fails()) {
                 return response()->json(array("error" => $validator->getMessageBag()->toArray()));
             } else {
                 $taskId = null;
-
                 DB::transaction(function () use ($attriuteName, $request, &$taskId, $date) {
                     $tasks = new Task();
-
                     $tasks->property_id = $request->property_id;
-                    $tasks->contact_id  = $request->contact_id;
-                    $tasks->manager_id  = $request->manager_id;
-                    $tasks->company_id  = auth('api')->user()->company_id;
-                    $tasks->due_by      = $request->due_by;
+                    $tasks->contact_id = $request->contact_id;
+                    $tasks->manager_id = $request->manager_id;
+                    $tasks->company_id = auth('api')->user()->company_id;
+                    $tasks->due_by = $request->due_by;
                     if ($request->due_by === null) {
                         $tasks->status = 'pending';
                     } elseif ($request->due_by < $date) {
@@ -448,47 +446,32 @@ class TasksController extends Controller
                     $property = Properties::where('id', $request->property_id)->first();
                     $po = $property->owner_id != null ? $property->owner_id : null;
                     $pt = $property->tenant_id != null ? $property->tenant_id : null;
-                    // return $po;
-                    // $taskActivity = new PropertyActivity();
-                    // $taskActivity->property_id = $request->property_id;
-                    // $taskActivity->contact_id = $request->contact_id;
-                    // $taskActivity->owner_contact_id = $po;
-                    // $taskActivity->tenant_contact_id = $pt;
-                    // $taskActivity->task_id = $tasks->id;
-                    // $taskActivity->type = 'redirect';
-                    // $taskActivity->status = 'Pending';
-                    // $taskActivity->save();
                     $taskId = $tasks->id;
 
                     $message_action_name = "Task";
-
-                    $messsage_trigger_point = 'New Task Added';
+                    $messsage_trigger_point = 'Created';
                     $data = [
                         "property_id" => $request->property_id,
                         "id" => $taskId,
                         'date' => $date,
                         "owner_contact_id" => $po,
                         "tenant_contact_id" => $pt
-
                     ];
                     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                    // $value = $activityMessageTrigger->trigger();
-                    $value = $activityMessageTrigger->trigger();
-                    // return $value;
+                    $activityMessageTrigger->trigger();
                 });
 
                 return response()->json([
                     'tasks_id' => $taskId,
-                    'message'  => 'successfull'
+                    'message' => 'successfull'
                 ], 200);
             }
         } catch (\Throwable $th) {
             return response()->json([
-                'status'  => 'false',
-                'error'   => ['error'],
+                'status' => 'false',
+                'error' => ['error'],
                 'message' => $th->getMessage(),
-                'data'    => []
+                'data' => []
             ], 500);
         }
     }
@@ -525,17 +508,17 @@ class TasksController extends Controller
             }
             // return $days_difference;
             return response()->json([
-                'data'    => $task,
+                'data' => $task,
                 // 'label'  => $label,
                 // 'total_due_dates' => $days_difference,
                 'message' => 'Successfull'
             ], 200);
         } catch (\Exception $ex) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $ex->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -560,42 +543,42 @@ class TasksController extends Controller
     {
         try {
             $attriuteName = array(
-                'property_id' =>  $request->property_id,
-                'contact_id'  =>  $request->contact_id,
-                'manager_id'  =>  $request->manager_id,
-                'company_id'  =>  auth('api')->user()->company_id,
-                'due_by'      =>  $request->due_by,
-                'summary'     =>  $request->summary,
-                'description' =>  $request->description
+                'property_id' => $request->property_id,
+                'contact_id' => $request->contact_id,
+                'manager_id' => $request->manager_id,
+                'company_id' => auth('api')->user()->company_id,
+                'due_by' => $request->due_by,
+                'summary' => $request->summary,
+                'description' => $request->description
 
             );
             $validator = Validator::make($attriuteName, [
                 'property_id' => 'required',
-                'summary'     => 'required'
+                'summary' => 'required'
             ]);
             if ($validator->fails()) {
                 return response()->json(array("error" => $validator->getMessageBag()->toArray()));
             } else {
                 $tasks = Task::findOrFail($id);
                 $tasks->property_id = $request->property_id;
-                $tasks->contact_id  = $request->contact_id;
-                $tasks->manager_id  = $request->manager_id;
-                $tasks->company_id  = auth('api')->user()->company_id;
-                $tasks->due_by      = $request->due_by;
-                $tasks->summary     = $request->summary;
+                $tasks->contact_id = $request->contact_id;
+                $tasks->manager_id = $request->manager_id;
+                $tasks->company_id = auth('api')->user()->company_id;
+                $tasks->due_by = $request->due_by;
+                $tasks->summary = $request->summary;
                 $tasks->description = $request->description;
                 $tasks->save();
                 return response()->json([
                     'tasks_id' => $tasks->id,
-                    'message'  => 'successfull'
+                    'message' => 'successfull'
                 ], 200);
             }
         } catch (\Throwable $th) {
             return response()->json([
-                'status'  => 'false',
-                'error'   => ['error'],
+                'status' => 'false',
+                'error' => ['error'],
                 'message' => $th->getMessage(),
-                'data'    => []
+                'data' => []
             ], 500);
         }
     }
@@ -612,15 +595,15 @@ class TasksController extends Controller
             $task = Task::findOrFail($id);
             $task->delete();
             return response()->json([
-                'data'    => $task,
+                'data' => $task,
                 'message' => 'Successfull'
             ], 200);
         } catch (\Exception $ex) {
             return response()->json([
-                "status"  => false,
-                "error"   => ['error'],
+                "status" => false,
+                "error" => ['error'],
                 "message" => $ex->getMessage(),
-                "data"    => []
+                "data" => []
             ], 500);
         }
     }
@@ -655,10 +638,10 @@ class TasksController extends Controller
             return response()->json(['message' => 'successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                'status'  => 'false',
-                'error'   => ['error'],
+                'status' => 'false',
+                'error' => ['error'],
                 'message' => $th->getMessage(),
-                'data'    => []
+                'data' => []
             ], 500);
         }
     }
@@ -745,7 +728,7 @@ class TasksController extends Controller
                 $imageUpload->property_id = $request->property_id;
                 $imageUpload->task_id = $request->task_id;
                 $imageUpload->file_size = $fileSize;
-                $imageUpload->company_id     = auth('api')->user()->company_id;
+                $imageUpload->company_id = auth('api')->user()->company_id;
             }
             $imageUpload->save();
 
@@ -768,9 +751,11 @@ class TasksController extends Controller
     public function getTaskDoc($id)
     {
         try {
-            $taskDoc = InspectionTaskMaintenanceDoc::where('task_id', $id)->with(['property' => function ($query) {
-                $query->addSelect('id', 'reference');
-            }])->get();
+            $taskDoc = InspectionTaskMaintenanceDoc::where('task_id', $id)->with([
+                'property' => function ($query) {
+                    $query->addSelect('id', 'reference');
+                }
+            ])->get();
             return response()->json([
                 'data' => $taskDoc,
                 'message' => 'Successfull'

@@ -9,7 +9,7 @@ class ContactDetails extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = ['reference'];
 
     protected static function newFactory()
     {

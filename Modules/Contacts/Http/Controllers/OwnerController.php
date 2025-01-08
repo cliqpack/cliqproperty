@@ -58,9 +58,7 @@ class OwnerController extends Controller
      * @param Request $request
      * @return Renderable
      */
-    public function store(Request $request)
-    {
-    }
+    public function store(Request $request) {}
 
     /**
      * Show the specified resource.
@@ -188,7 +186,7 @@ class OwnerController extends Controller
             } else {
                 $ownerId = null;
                 DB::transaction(function () use ($attributeNames, $request, &$ownerId) {
-                    $ownerCheck = OwnerContact::where('property_id', $request->property_id)->count();
+                    $ownerCheck = OwnerContact::where('property_id', $request->property_id)->where('status', true)->first();
                     $ownerProperty = new OwnerProperty();
                     if ($request->contact_id) {
                         $contacts = Contacts::findOrFail($request->contact_id);
@@ -370,9 +368,8 @@ class OwnerController extends Controller
                             $ownerContact->home_phone   = $request->contacts[0]['home_phone'];
                             $ownerContact->email        = $request->contacts[0]['email'];
                             // $ownerContact->abn          = $request->abn;
-                            // $ownerContact->abn          = !empty($request->abn) ? $request->abn : NULL;
                             $ownerContact->notes        = $request->notes;
-                            if ($ownerCheck > 0) {
+                            if (!empty($ownerCheck)) {
                                 $ownerContact->status        = false;
                             } else $ownerContact->status        = true;
                             $ownerContact->company_id   = auth('api')->user()->company_id;
@@ -393,7 +390,7 @@ class OwnerController extends Controller
                         $ownerContact->home_phone   = $request->contacts[0]['home_phone'];
                         $ownerContact->email        = $request->contacts[0]['email'];
                         $ownerContact->notes        = $request->notes;
-                        if ($ownerCheck > 0) {
+                        if (!empty($ownerCheck)) {
                             $ownerContact->status        = false;
                         } else $ownerContact->status        = true;
                         $ownerContact->company_id   = auth('api')->user()->company_id;
@@ -425,7 +422,7 @@ class OwnerController extends Controller
                         $ownerFolio->owner_access        = $request->owner_access;
                         $ownerFolio->company_id        = auth('api')->user()->company_id;
                         $ownerFolio->folio_code        = 'OWN000' . $ownerId;
-                        $ownerCheck > 0 ? $ownerFolio->status = false : $ownerFolio->status = true;
+                        !empty($ownerCheck) ? $ownerFolio->status = false : $ownerFolio->status = true;
                         $ownerFolio->save();
                         $oFolioId = $ownerFolio->id;
                         OwnerFolio::where('id', $oFolioId)->update(["folio_code" => 'OWN000' . $oFolioId]);
@@ -510,7 +507,7 @@ class OwnerController extends Controller
                         $payment->company_id = auth('api')->user()->company_id;
                         $payment->save();
                     }
-                    if ($ownerCheck == 0) {
+                    if (empty($ownerCheck)) {
                         Properties::where('id', $request->property_id)->update([
                             'owner' => 1,
                             'owner_folio_id' => $request->folio_id == "" ? $oFolioId : $request->folio_id,
@@ -967,15 +964,97 @@ class OwnerController extends Controller
     public function property_owner_info($propertyId)
     {
         try {
-            $property_get = Properties::select('owner_folio_id', 'owner_contact_id')->where('id', $propertyId)->where('company_id', auth('api')->user()->company_id)->first();
-            $owner = OwnerContact::with('OwnerFees', 'OwnerFolio', 'OwnerFolio.total_bills_amount', 'ownerPropertyFees', 'ownerPayment')->where('id', $property_get->owner_contact_id)->where('company_id', auth('api')->user()->company_id)->where('status', true)->first();
-            $folio = OwnerFolio::select('*')->where('id', $property_get->owner_folio_id);
-            $ownerPendingBill = $folio->withSum('total_bills_amount', 'amount')->withSum('total_due_invoices', 'amount')->withSum('total_due_invoices', 'paid')->where('company_id', auth('api')->user()->company_id)->where('status', true)->first();
+            $property_get = Properties::select('owner_folio_id', 'owner_contact_id')
+                ->where('id', $propertyId)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->first();
+
+            $owner = OwnerContact::with('OwnerFees', 'OwnerFolio', 'OwnerFolio.total_bills_amount', 'ownerPropertyFees', 'ownerPayment')
+                ->where('id', $property_get->owner_contact_id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->where('status', true)
+                ->first();
+
+            $folio = OwnerFolio::select('*')
+                ->where('id', $property_get->owner_folio_id);
+
+            $ownerPendingBill = $folio->withSum('total_bills_amount', 'amount')
+                ->withSum('total_due_invoices', 'amount')
+                ->withSum('total_due_invoices', 'paid')
+                ->where('company_id', auth('api')->user()->company_id)
+                ->where('status', true)->first();
+
+            $ownerFolio = $folio->where('company_id', auth('api')->user()->company_id)
+                ->where('status', true)
+                ->first();
+
+            $ownerContact = $owner->contacts;
+
+            $ownerFees = OwnerContact::with('user.user_plan.plan.details')
+                ->where('id', $property_get->owner_contact_id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->where('status', true)
+                ->first();
+
+            if ($ownerFees->user && $ownerFees->user->user_plan) {
+                $ownerFees = count($ownerFees->user->user_plan->plan->details);
+            } else $ownerFees = 0;
+
+            $ownerPlanAddon = OwnerPlanAddon::where('owner_folio_id', $ownerFolio->id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->with('plan')
+                ->get();
+            $ownerPlan = OwnerPlan::where('owner_id', $ownerFolio->owner_contact_id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->with('plan')
+                ->first();
+
+            $newplanname = '';
+            if ($ownerPlan) {
+                $newplanname = $ownerPlan->plan->name;
+            }
+            $planName = '';
+            $customPlan = false;
+            if ($ownerPlanAddon != null) {
+                if (sizeof($ownerPlanAddon) > 0) {
+                    foreach ($ownerPlanAddon as $value) {
+                        if ($value['optional_addon'] === 1) {
+                            $customPlan = true;
+                        }
+                    }
+                }
+            }
+            $planName = $customPlan === true ?  $newplanname . ' (Custom)' : $newplanname;
+            $total_due_invoices_sum_amount = $ownerPendingBill->total_due_invoices_sum_amount ? $ownerPendingBill->total_due_invoices_sum_amount : 0;
+            $total_due_invoices_sum_paid = $ownerPendingBill->total_due_invoices_sum_paid ? $ownerPendingBill->total_due_invoices_sum_paid : 0;
+
+            return response()->json([
+                'data'    => $owner,
+                'folio'   => $ownerFolio,
+                'contact' => $ownerContact,
+                'ownerPendingBill' => $ownerPendingBill,
+                'ownerFees' => $ownerFees,
+                'planName' => $planName,
+                'newplanname' => $newplanname,
+                'pending_invoice_bill' => $total_due_invoices_sum_amount - $total_due_invoices_sum_paid,
+                'status'  => "Success"
+            ], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
+        }
+    }
+    public function property_owner_info_with_archive($folioId)
+    {
+        try {
+            $withArcOwnFolio = OwnerFolio::select('*')->where('id', $folioId)->first();
+            $folio = OwnerFolio::select('*')->where('id', $folioId);
+            $owner = OwnerContact::with('OwnerFees', 'OwnerFolio', 'OwnerFolio.total_bills_amount', 'ownerPropertyFees', 'ownerPayment')->where('id', $withArcOwnFolio->owner_contact_id)->where('company_id', auth('api')->user()->company_id)->first();
+            $ownerPendingBill = $folio->withSum('total_bills_amount', 'amount')->withSum('total_due_invoices', 'amount')->withSum('total_due_invoices', 'paid')->where('company_id', auth('api')->user()->company_id)->first();
             // $ownerPendingBill->total_due_invoices_sum_amount;
 
-            $ownerFolio = $folio->where('company_id', auth('api')->user()->company_id)->where('status', true)->first();
+            $ownerFolio = $folio->where('company_id', auth('api')->user()->company_id)->first();
             $ownerContact = $owner->contacts;
-            $ownerFees = OwnerContact::with('user.user_plan.plan.details')->where('id', $property_get->owner_contact_id)->where('company_id', auth('api')->user()->company_id)->where('status', true)->first();
+            $ownerFees = OwnerContact::with('user.user_plan.plan.details')->where('id', $withArcOwnFolio->owner_contact_id)->where('company_id', auth('api')->user()->company_id)->first();
 
             if ($ownerFees->user && $ownerFees->user->user_plan) {
                 $ownerFees = count($ownerFees->user->user_plan->plan->details);
@@ -1018,6 +1097,24 @@ class OwnerController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
         }
     }
+    public function restoreOwner($folioId)
+    {
+        try {
+            $ownerFolio = OwnerFolio::where('id', $folioId)->first();
+            if ($ownerFolio) {
+                $property = Properties::find($ownerFolio->property_id);
+                if ($property->status === "Archived") {
+                    return response()->json(['message' => "Can't restore folio " . $ownerFolio->folio_code . " " . $property->reference . " is archived", "status" => "Failed"], status: 400);
+                }
+            }
+
+            OwnerFolio::where('id', $folioId)->update(['status' => true, 'archive' => false]);
+            return response()->json(['message' => "Successful", "status" => 'Success'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
+        }
+    }
+
     public function property_all_owner_info($propertyId)
     {
         try {
@@ -1185,14 +1282,17 @@ class OwnerController extends Controller
     public function property_owner_due_check_and_archive(Request $request)
     {
         try {
-            $date = Carbon::now()->format('Y-m-d');
             $ownerFolios = OwnerFolio::where('id', $request->owner_id)->withSum('total_bills_amount', 'amount')->first();
-            $opening = (floatval($ownerFolios->opening_balance) + floatval($ownerFolios->money_in)) - (floatval($ownerFolios->money_out) + floatval($ownerFolios->total_bills_amount_sum_amount));
-            if ($opening == 0) {
-                OwnerContact::where('id', $ownerFolios->owner_contact_id)->update(['status' => $request->status]);
-                return response()->json(['message' => 'successfull', "staus" => '1', 'opening' => '0'], 200);
-            } else {
+            $opening = (floatval($ownerFolios->opening_balance) + floatval($ownerFolios->money_in)) - floatval($ownerFolios->money_out);
+            if ($opening > 0) {
                 return response()->json(['message' => 'Your Balance is not zero, please clear amount $' . $opening, "staus" => '0', 'opening' => $opening], 200);
+            } else if (floatval($ownerFolios->total_bills_amount_sum_amount) > 0) {
+                return response()->json(['message' => 'Cannot archive folio, total outstanding bill is $' . floatval($ownerFolios->total_bills_amount_sum_amount) . ". Cancel the bill and try again.", "staus" => '0', 'opening' => $opening], 200);
+            } else {
+                Properties::where('owner_folio_id', $request->owner_id)->update(['owner' => false, 'owner_folio_id' => NULL, 'owner_contact_id' => NULL]);
+                OwnerContact::where('id', $ownerFolios->owner_contact_id)->update(['status' => $request->status]);
+                OwnerFolio::where('id', $request->owner_id)->update(['status' => false, 'archive' => true]);
+                return response()->json(['message' => 'successfull', "staus" => '1', 'opening' => '0'], 200);
             }
         } catch (\Throwable $th) {
             return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);

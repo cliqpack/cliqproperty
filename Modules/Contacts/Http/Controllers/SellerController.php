@@ -325,7 +325,7 @@ class SellerController extends Controller
 
                     $activity_email_template = new PropertyActivityEmail();
                     $activity_email_template->email_to = $request->contacts[0]['email'];
-                    $activity_email_template->email_from = "no-reply@cliqproperty.com";
+                    $activity_email_template->email_from = "no-reply@myday.com";
                     $activity_email_template->subject = " Listed - " . $propsData->reference;
                     $activity_email_template->email_body = "<p>This seller has Been Listed</p>";
                     $activity_email_template->email_status = "pending";
@@ -335,7 +335,7 @@ class SellerController extends Controller
                     $messageWithMail = new MessageWithMail();
                     $messageWithMail->property_id = $request->property_id;
                     $messageWithMail->to       = $request->contacts[0]['email'] ? $request->contacts[0]['email'] : "no_owner_email@mail.com";
-                    $messageWithMail->from     = "no-reply@cliqproperty.com";
+                    $messageWithMail->from     = "no-reply@myday.com";
                     $messageWithMail->subject  = " Listed - " . $propsData->reference;
                     $messageWithMail->body     = "<p>This seller has Been Listed</p>";
                     $messageWithMail->status   = "Outbox";
@@ -480,9 +480,6 @@ class SellerController extends Controller
             if($seller){
                 $sellerFolio=SellerFolio::where('seller_contact_id',$seller->salesContact->id)->withSum('total_bills_amount', 'amount')->first();
             }
-
-
-
             return response()->json([
                 'data' => $seller,
                 'total_bill'=>$seller?$sellerFolio->total_bills_amount_sum_amount:0,
@@ -491,11 +488,38 @@ class SellerController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
-    public function salesAgreementInfo($id, $sellerId)
+    public function salesInfoWithArchive($id)
     {
         try {
+            $sellerFolio = SellerFolio::where('id',$id)->withSum('total_bills_amount', 'amount')->first();
+            $seller = PropertySalesAgreement::where('seller_id', $sellerFolio->seller_contact_id)->with('salesContact.sellerFolio', 'salesContact.sellerPayment', 'buyerContact.buyerFolio', 'buyerContact.buyerPayment')->first();
+            return response()->json([
+                'data' => $seller,
+                'total_bill'=>$seller?$sellerFolio->total_bills_amount_sum_amount:0,
+            ], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
+        }
+    }
+    public function restoreSeller($folioId)
+    {
+        try {
+            DB::transaction(function () use ($folioId) {
+                $sellerFolio = SellerFolio::where('id',$folioId)->first();
+                PropertySalesAgreement::where('seller_id', $sellerFolio->seller_contact_id)->update(['status' => true]);
+                SellerContact::where('id', $sellerFolio->seller_contact_id)->update(['status' => true]);
+                SellerFolio::where('id', $folioId)->update(['status' => true, 'archive' => false]);
+            });
+            return response()->json(['message' => "Successful", "status" => 'Success'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
+        }
+    }
+    public function salesAgreementInfo($id, $sellerId)
+    {
+        // return $sellerId;
+        try {
             $seller = PropertySalesAgreement::where('property_id', $id)->where('seller_id', $sellerId)->with('salesContact.sellerFolio', 'salesContact.sellerPayment', 'buyerContact.buyerFolio', 'buyerContact.buyerPayment', 'salesContact.contactDetails', 'salesContact.contactDetails.contactDetailsPhysicalAddress', 'salesContact.contactDetails.contactDetailsPostalAddress', 'salesContact.contactDetails.contactDetailsCommunications', 'buyerContact.contactDetails', 'buyerContact.contactDetails.contactDetailsPhysicalAddress', 'buyerContact.contactDetails.contactDetailsPostalAddress', 'buyerContact.contactDetails.contactDetailsCommunications')->first();
-            // return $seller;
 
             $sellerContact = SellerContact::where('property_id', $id)->first();
             $sellerPhysicalAddress = ContactPhysicalAddress::where('contact_id', $sellerContact->contact_id)->get();
@@ -503,13 +527,10 @@ class SellerController extends Controller
             $sellerPostalAddress = ContactPostalAddress::where('contact_id', $sellerContact->contact_id)->get();
             $sellerCommunication = ContactCommunication::where('contact_id', $sellerContact->contact_id)->get();
             if ($seller->has_buyer === "true") {
-
                 $buyer = BuyerContact::where('property_id', $id)->first();
-
                 $buyerPhysicalAddress = ContactPhysicalAddress::where('contact_id', $buyer->contact_id)->get();
                 $buyerPostalAddress = ContactPostalAddress::where('contact_id', $buyer->contact_id)->get();
                 $buyerCommunication = ContactCommunication::where('contact_id', $buyer->contact_id)->get();
-
 
                 return response()->json([
                     'data' => $seller,
@@ -525,9 +546,7 @@ class SellerController extends Controller
                 'data' => $seller,
                 'sellerPhysicalAddress' => $sellerPhysicalAddress,
                 'sellerPostalAddress'   => $sellerPostalAddress,
-                // 'contactPostalAddress'   => $sellerPostalAddress,
                 'sellerCommunication'   => $sellerCommunication,
-
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -542,7 +561,7 @@ class SellerController extends Controller
      */
     public function update(Request $request, $id)
     {
-
+// return $request;
         try {
             $attributeNames = array(
                 // Seller Contact
@@ -583,7 +602,7 @@ class SellerController extends Controller
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-                DB::transaction(function () use ($request, $id) {
+                // DB::transaction(function () use ($request, $id) {
                     $sellerContactFind = SellerContact::where('id', $id);
                     $sellerContact = $sellerContactFind->first();
 
@@ -618,7 +637,7 @@ class SellerController extends Controller
                         'company_id'            => auth('api')->user()->company_id,
                         'seller' => 1,
                     ]);
-
+// return "eeee";
                     $contact_details_delete = ContactDetails::where('contact_id', $sellerContact->contact_id)->delete();
                     $contact_physical_delete = ContactPhysicalAddress::where('contact_id', $sellerContact->contact_id)->delete();
                     $contact_postal_delete = ContactPostalAddress::where('contact_id', $sellerContact->contact_id)->delete();
@@ -716,13 +735,14 @@ class SellerController extends Controller
                         $payment->payee = $paye["payee"] ? $paye["payee"] : null;
                         $payment->save();
                     }
-
+// return "weewew";
                     // buyer edit
                     if (!is_null($request->buyer_id)) {
                         $buyerContactData = BuyerContact::where('id', $request->buyer_id);
                         $buyerContact = $buyerContactData->first();
+                        // return $request->buyer_contacts;
                         $buyerContactData->update([
-                            "reference"             =>  $request->buyer_reference,
+                            "reference"             => $request->buyer_contacts[0]['reference'],
                             "first_name"            => $request->buyer_contacts[0]['first_name'],
                             "last_name"             => $request->buyer_contacts[0]['last_name'],
                             "salutation"            => $request->buyer_contacts[0]['salutation'],
@@ -807,8 +827,6 @@ class SellerController extends Controller
                             }
                         }
 
-
-
                         $buyerFolio = BuyerFolio::where('buyer_contact_id', $request->buyer_id)->update([
                             "agreement_start"     => $request->agreement_start ? $request->agreement_start : null,
                             "agreement_end"       => $request->agreement_end ? $request->agreement_end : null,
@@ -820,7 +838,7 @@ class SellerController extends Controller
                             "commission"          => $request->commission ? $request->commission : null,
                         ]);
                     }
-                });
+                // });
 
                 return response()->json([
                     'message' => 'Seller Contact created successfully',
@@ -850,13 +868,18 @@ class SellerController extends Controller
     public function property_seller_due_check_and_archive(Request $request)
     {
         try {
-            $date = Carbon::now()->format('Y-m-d');
-            $sellerFolios = SellerFolio::where('id', $request->seller_id)->first();
-            if ($sellerFolios->balance == 0) {
-                $seller = PropertySalesAgreement::where('property_id', $request->property_id)->where('seller_id',$sellerFolios->seller_contact_id)->update(['status' => $request->status]);
-                return response()->json(['message' => 'successfull', "staus" => '1', 'opening' => $sellerFolios->balance], 200);
-            } else {
+            $sellerFolios = SellerFolio::where('id', $request->seller_id)->withSum('total_bills_amount', 'amount')->first();
+            if ($sellerFolios->balance > 0) {
                 return response()->json(['message' => 'Your Balance is not zero, please clear amount $' . $sellerFolios->balance, "staus" => '0', 'balance' => $sellerFolios->balance], 200);
+            } else if (intval($sellerFolios->total_bills_amount_sum_amount) > 0) {
+                return response()->json(['message' => 'Cannot archive folio, total outstanding bill is $' . floatval($sellerFolios->total_bills_amount_sum_amount) . ". Cancel the bill and try again.", "staus" => '0', 'opening' => $sellerFolios->balance], 200);
+            } else {
+                DB::transaction(function () use ($request, $sellerFolios) {
+                    PropertySalesAgreement::where('property_id', $request->property_id)->where('seller_id', $sellerFolios->seller_contact_id)->update(['status' => $request->status]);
+                    SellerContact::where('id', $sellerFolios->seller_contact_id)->update(['status' => false]);
+                    SellerFolio::where('id', $request->seller_id)->update(['status' => false, 'archive' => true]);
+                });
+                return response()->json(['message' => 'Seller archived successfully', "staus" => '1', 'opening' => $sellerFolios->balance], 200);
             }
         } catch (\Throwable $th) {
             return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);

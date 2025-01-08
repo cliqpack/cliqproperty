@@ -5,6 +5,7 @@ namespace Modules\Contacts\Entities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Modules\Accounts\Entities\Bill;
+use Modules\Accounts\Entities\FolioLedger;
 use Modules\Accounts\Entities\ReceiptDetails;
 
 class SellerFolio extends Model
@@ -44,7 +45,6 @@ class SellerFolio extends Model
     {
         return $this->hasMany(ReceiptDetails::class, 'to_folio_id', 'id')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
     }
-
     // public function total_due_invoices()
     // {
     //     return $this->hasMany(Invoices::class, 'owner_folio_id', 'id')->where('status', 'Unpaid')->where('company_id', auth('api')->user()->company_id);

@@ -77,43 +77,52 @@ class PropertiesLabelController extends Controller
     }
 
     /**
-     * Show the specified resource.
-     * @param int $id
-     * @return Renderable
-     */
-    public function show($id)
-    {
-        return view('properties::show');
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     * @param int $id
-     * @return Renderable
-     */
-    public function edit($id)
-    {
-        return view('properties::edit');
-    }
-
-    /**
-     * Update the specified resource in storage.
+     * Get all labels by multiple property IDs.
+     *
      * @param Request $request
-     * @param int $id
-     * @return Renderable
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, $id)
+    public function getLabelsByProperties(Request $request)
     {
-        //
+        try {
+            $request->validate([
+                'property_ids' => 'required|array',
+            ]);
+
+            $labels = PropertiesLabel::whereIn('property_id', $request->property_ids)
+                ->get(['property_id', 'labels']);
+
+            $groupedLabels = $labels->groupBy('property_id');
+
+            return response()->json(['labels' => $groupedLabels], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Something went wrong', 'message' => $e->getMessage()], 500);
+        }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     * @param int $id
-     * @return Renderable
-     */
-    public function destroy($id)
+    public function updateLabels(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'property_ids' => 'required|array',
+            'property_ids.*' => 'exists:properties,id',
+            'labels' => 'array',
+            'labels.*' => 'string'
+        ]);
+
+        $propertyIds = $validated['property_ids'];
+        $newLabels = $validated['labels'] ?? [];
+
+        foreach ($propertyIds as $propertyId) {
+            PropertiesLabel::where('property_id', $propertyId)->delete();
+            
+            foreach ($newLabels as $label) {
+                PropertiesLabel::create([
+                    'property_id' => $propertyId,
+                    'labels' => $label
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Labels updated successfully.']);
     }
 }

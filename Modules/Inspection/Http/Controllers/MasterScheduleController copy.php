@@ -53,17 +53,9 @@ class MasterScheduleControllerCopy extends Controller
      * @return Renderable
      */
 
-    // $attributeNames = array(
-    //     'manager_id'    => $request->manager_id,
-    //     'date'    => $request->date,
-    //     'start_time'    => $request->start_time,
-    //     'properties' => $request->properties,
-
-    // );
     public function store(Request $request)
     {
         try {
-
             $attributeNames = array(
                 'manager_id' => $request->manager_id,
                 'property_id' => $request->property_id,
@@ -82,10 +74,7 @@ class MasterScheduleControllerCopy extends Controller
             $master->company_id = auth('api')->user()->company_id;
             $master->save();
 
-
-
             foreach ($request->property as $pro) {
-
                 $attributeNames1 = array(
                     'masterSchedule_id' => $master->id,
                     'property_id' => $pro["property_id"],
@@ -93,7 +82,6 @@ class MasterScheduleControllerCopy extends Controller
                     'schedule_time' => $pro["schedule_time"],
                     'lat' => $pro["lat"],
                     'long' => $pro["long"],
-
                 );
                 InspectionSchedule::create($attributeNames1);
                 $PropertyPreSchedule = PropertyPreSchedule::findOrFail($pro["propertyScheduleId"]);
@@ -111,8 +99,7 @@ class MasterScheduleControllerCopy extends Controller
                     $date_week = strtotime($day_str, $date_week);
                     $date_week = date('Y-m-d', $date_week);
 
-                    $propertyUp = $property->update(["routine_inspection_due_date" => $date_week]);
-                    //$property_delete = $property->update(["status" => "deleted"]);
+                    $property->update(["routine_inspection_due_date" => $date_week]);
 
                     $propertyPreSchedule = new PropertyPreSchedule();
                     $propertyPreSchedule->property_id = $pro["property_id"];
@@ -129,8 +116,7 @@ class MasterScheduleControllerCopy extends Controller
                     $date_month = strtotime($day_str, $date_month);
                     $date_month = date('Y-m-d', $date_month);
 
-                    $propertyUp = $property->update(["routine_inspection_due_date" => $date_month]);
-                    // $property_delete = $property->update(["status" => "deleted"]);
+                    $property->update(["routine_inspection_due_date" => $date_month]);
 
                     $propertyPreSchedule = new PropertyPreSchedule();
                     $propertyPreSchedule->property_id = $pro["property_id"];
@@ -142,9 +128,7 @@ class MasterScheduleControllerCopy extends Controller
                     $propertyPreSchedule->save();
                 }
 
-
                 $endTime = strtotime("+30 minutes", strtotime($request->start_time . ":00"));
-
 
                 $attributeNames = array(
                     'property_id'       => $pro["property_id"],
@@ -164,7 +148,6 @@ class MasterScheduleControllerCopy extends Controller
 
 
                 $message_action_name = "Inspection All";
-                // $message_trigger_to = 'Tenant';
                 $messsage_trigger_point = 'Scheduled';
                 $data = [
                     "property_id" => $pro["property_id"],
@@ -172,40 +155,16 @@ class MasterScheduleControllerCopy extends Controller
                     "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
                     "tenant_contact_id" => $request->tenant_contact_id,
                     "id" => $inspection->id,
-
-
                 ];
 
-                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name,'', $messsage_trigger_point, $data, "email");
-
-
-                $value = $activityMessageTrigger->trigger();
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
             }
             return response()->json([['data' => [], 'message' => 'successfull']], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 503);
         }
     }
-
-    // public function testApi(Request $request)
-    // {
-
-
-    //     $message_action_name = "karim";
-    //     $message_trigger_to = 'tenant';
-    //     $messsage_trigger_point = 'schedule';
-    //     $data = [
-    //         "property_id" => 1,
-    //         "start_time" => "3:00",
-    //         "email" => "test@gmail.com"
-    //     ];
-    //     // return $data;
-
-    //     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, $message_trigger_to, $messsage_trigger_point, $data);
-
-    //     $value = $activityMessageTrigger->trigger();
-
-    // }
 
     /**
      * Show the specified resource.
@@ -277,9 +236,7 @@ class MasterScheduleControllerCopy extends Controller
      * @param int $id
      * @return Renderable
      */
-    public function update(Request $request, $id)
-    {
-    }
+    public function update(Request $request, $id) {}
 
     /**
      * Remove the specified resource from storage.

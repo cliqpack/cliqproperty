@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Exception;
 use Illuminate\Auth\Events\Registered;
+
 
 class AdminPanelController extends Controller
 {
@@ -47,15 +47,15 @@ class AdminPanelController extends Controller
         try {
 
             $attributeNames = array(
-                'company_name'        => $request->company_name,
-                'phone'              => $request->mobile_phone,
-                'address'            => $request->address,
+                'company_name' => $request->company_name,
+                'phone' => $request->mobile_phone,
+                'address' => $request->address,
             );
 
             $validator = Validator::make($attributeNames, [
-                'company_name'        => 'required',
-                'phone'              => 'required',
-                'address'              => 'required',
+                'company_name' => 'required',
+                'phone' => 'required',
+                'address' => 'required',
             ]);
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
@@ -68,13 +68,13 @@ class AdminPanelController extends Controller
                     'slug' => Str::of($request->company_name)->slug('-'),
 
                 ]);
-
+        
                 $attributeNames1 = array(
-                    'first_name'        => $request->first_name,
-                    'last_name'              => $request->last_name,
-                    'email'            => $request->email,
-                    'user_type'              => $request->user_type,
-                    'password'            => $request->password,
+                    'first_name' => $request->first_name,
+                    'last_name' => $request->last_name,
+                    'email' => $request->email,
+                    'user_type' => $request->user_type,
+                    'password' => $request->password,
                 );
 
                 $validator1 = Validator::make($attributeNames1, [
@@ -100,10 +100,11 @@ class AdminPanelController extends Controller
                         'company_id' => $company->id,
                         'work_phone' => $request->work_phone,
                         'mobile_phone' => $request->mobile_phone,
-                        'password' =>  Hash::make($request->password)
+                        'password' => Hash::make($request->password)
                     ]);
 
                     event(new Registered($user));
+
                     return response()->json([
                         'data' => null,
                         'message' => 'Please Verify Email'
@@ -130,7 +131,7 @@ class AdminPanelController extends Controller
         $data = [
             'menus' => $menus
         ];
-        return view('module',$data);
+        return view('module', $data);
     }
     public function role()
     {
@@ -139,19 +140,19 @@ class AdminPanelController extends Controller
         $data = [
             'menus' => $menus
         ];
-        return view('role',$data);
+        return view('role', $data);
     }
 
     public function userRole()
     {
         $menus = User::all();
-        $roles=RoleModel::where('soft_delete',0)->get();
+        $roles = RoleModel::where('soft_delete', 0)->get();
 
         $data = [
             'users' => $menus,
             'roles' => $roles
         ];
-        return view('userRoles',$data);
+        return view('userRoles', $data);
     }
     public function allUser()
     {
@@ -160,6 +161,6 @@ class AdminPanelController extends Controller
         $data = [
             'users' => $menus
         ];
-        return view('allUser',$data);
+        return view('allUser', $data);
     }
 }

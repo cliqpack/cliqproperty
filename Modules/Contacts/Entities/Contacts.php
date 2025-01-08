@@ -87,5 +87,8 @@ class Contacts extends Model
         return $this->hasMany(ContactDetails::class, 'contact_id', 'id');
     }
 
-
+    public function ownerContact()
+    {
+        return $this->hasOne(OwnerContact::class, 'contact_id', 'id');
+    }
 }

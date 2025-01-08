@@ -24,7 +24,6 @@ class PropertiesReminderController extends Controller
     public function index()
     {
         try {
-            // return "hello";
             $propertyReminderSetting = ReminderProperties::where('company_id', auth('api')->user()->company_id)->with('supplier', 'reminder_docs')->get();
             return response()->json([
                 'data' => $propertyReminderSetting,
@@ -42,8 +41,7 @@ class PropertiesReminderController extends Controller
     public function onlyPropertyReminder($pro_id)
     {
         try {
-            // return "hello";
-            $propertyReminderSetting = ReminderProperties::where('company_id', auth('api')->user()->company_id)->where('property_id', $pro_id)->with('supplier','reminder_docs')->get();
+            $propertyReminderSetting = ReminderProperties::where('company_id', auth('api')->user()->company_id)->where('property_id', $pro_id)->with('supplier', 'reminder_docs')->get();
             return response()->json([
                 'data' => $propertyReminderSetting,
                 'message' => 'successfull'
@@ -171,35 +169,40 @@ class PropertiesReminderController extends Controller
      */
     public function store(Request $request)
     {
-        // return "hello";
         try {
             $date = date("Y-m-d");
-            $propertyReminderSetting = new ReminderProperties();
+            $propertyIds = is_array($request->property_id) ? $request->property_id : [$request->property_id];
+            $reminderIds = [];
 
-            $propertyReminderSetting->property_id  = $request->property_id ? $request->property_id : null;
-            $propertyReminderSetting->name  = $request->name ? $request->name : null;
-            $propertyReminderSetting->reminder_setting_id   = $request->reminder_setting_id  ? $request->reminder_setting_id  : null;
-            $propertyReminderSetting->contact    = $request->contact ? $request->contact : null;
-            $propertyReminderSetting->frequency    = $request->frequency ? $request->frequency : null;
-            $propertyReminderSetting->frequency_type    = $request->frequency_type ? $request->frequency_type : null;
-            // $propertyReminderSetting->status    = $request->status ? $request->status : null;
+            foreach ($propertyIds as $propertyId) {
+                $propertyReminderSetting = new ReminderProperties();
+                $propertyReminderSetting->property_id = $propertyId;
+                $propertyReminderSetting->name = $request->name ?? null;
+                $propertyReminderSetting->reminder_setting_id = $request->reminder_setting_id ?? null;
+                $propertyReminderSetting->contact = $request->contact ?? null;
+                $propertyReminderSetting->frequency = $request->frequency ?? null;
+                $propertyReminderSetting->frequency_type = $request->frequency_type ?? null;
 
-            if ($request->reminder_status === null) {
-                $propertyReminderSetting->status = 'pending';
+                if ($request->reminder_status === null) {
+                    $propertyReminderSetting->status = 'pending';
+                }
+                if ($request->due < $date) {
+                    $propertyReminderSetting->status = 'due';
+                }
+
+                $propertyReminderSetting->certificate_expiry = $request->certificate_expiry ?? null;
+                $propertyReminderSetting->due = $request->due ?? null;
+                $propertyReminderSetting->notes = $request->notes ?? null;
+                $propertyReminderSetting->system_template = $request->system_template;
+                $propertyReminderSetting->supplier_contact_id = $request->supplier ?? null;
+                $propertyReminderSetting->company_id = auth('api')->user()->company_id;
+                $propertyReminderSetting->save();
+
+                $reminderIds[] = $propertyReminderSetting->id;
             }
-            if ($request->due < $date) {
-                $propertyReminderSetting->status = 'due';
-            }
-            $propertyReminderSetting->certificate_expiry    = $request->certificate_expiry ? $request->certificate_expiry : null;
-            $propertyReminderSetting->due    = $request->due ? $request->due : null;
-            $propertyReminderSetting->notes    = $request->notes ? $request->notes : null;
-            $propertyReminderSetting->system_template    = $request->system_template;
-            $propertyReminderSetting->supplier_contact_id    = $request->supplier ? $request->supplier : null;
-            $propertyReminderSetting->company_id   = auth('api')->user()->company_id;
-            $propertyReminderSetting->save();
             return response()->json([
-                'data' => $propertyReminderSetting->id,
-                'message' => 'Reminder Setting created successfully'
+                'data' => $reminderIds,
+                'message' => 'Reminder Settings created successfully for all properties'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
@@ -210,6 +213,7 @@ class PropertiesReminderController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Show the specified resource.

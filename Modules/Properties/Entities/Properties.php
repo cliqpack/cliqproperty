@@ -1,14 +1,12 @@
 <?php
 
 namespace Modules\Properties\Entities;
-
+use  App\Models\User;
 use App\Collections\DateCollections;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use  App\Models\User;
 use Modules\Accounts\Entities\Bill;
 use Modules\Accounts\Entities\Invoices;
-use Modules\Accounts\Entities\Receipt;
 use Modules\Contacts\Entities\OwnerContact;
 use Modules\Contacts\Entities\OwnerFees;
 use Modules\Contacts\Entities\OwnerFolio;
@@ -17,46 +15,19 @@ use Modules\Contacts\Entities\TenantContact;
 use Modules\Contacts\Entities\TenantFolio;
 use Modules\Inspection\Entities\Inspection;
 use Modules\Inspection\Entities\InspectionTaskMaintenanceDoc;
-use Modules\Listings\Entities\listing;
 use Modules\Listings\Entities\OptionalProperties;
 
 class Properties extends Model
 {
     use HasFactory;
-
-
     protected $table = "properties";
-
     protected $fillable = [
         'reference',
         'manager_id',
-        // 'location',
-        // 'property_type',
-        // 'primary_type',
-        // 'description',
-        // 'floor_area',
-        // 'floor_size',
-        // 'land_area',
-        // 'land_size',
-        // 'key_number',
-        // 'strata_manager_id',
-        // 'routine_inspections_frequency',
-        // 'first_routine',
-        // 'first_routine_UoM',
-        // 'routine_inspection_due_date',
-        // 'routine_inspections_frequency_type',
-        // 'note',
-        // 'bedroom',
-        // 'bathroom',
-        // 'car_space',
-        // 'first_routine',
-        // 'first_routine_frequency_type',
         'company_id',
-
     ];
 
-
-    protected $appends = ['manager', 'manager_name', 'tenant', 'owner', 'tenant_id', 'owner_id', 'tenant_contact_id', 'last_inspection', 'stata_manager_name','stata_manager','owner_email'];
+    protected $appends = ['manager', 'manager_name', 'tenant', 'owner', 'tenant_id', 'owner_id', 'tenant_contact_id', 'last_inspection', 'stata_manager_name', 'stata_manager', 'owner_email'];
 
     protected static function newFactory()
     {
@@ -145,11 +116,6 @@ class Properties extends Model
         return $this->hasMany(Invoices::class, 'property_id', 'id')->where('status', 'Unpaid');
     }
 
-    // public function receipt()
-    // {
-    //     return $this->hasMany(Receipt::class, 'property_id', 'id');
-    // }
-
     public function property_images()
     {
         return $this->hasMany(PropertyImage::class, 'property_id', 'id');
@@ -233,11 +199,6 @@ class Properties extends Model
         return  TenantContact::where('property_id', $this->id)->where('status', 'true')->pluck('contact_id')->first();
     }
 
-    // public function getOwnerContactIdAttribute()
-    // {
-    //     return OwnerContact::where('property_id', $this->id)->pluck('contact_id')->first();
-    // }
-
     public function tanentLast()
     {
         return  TenantContact::where('property_id', $this->id)->pluck('first_name')->first();
@@ -289,7 +250,6 @@ class Properties extends Model
 
     public function ownerFolio()
     {
-        // return $this->hasOne(OwnerFolio::class, 'property_id', 'id')->where('status', true);
         return $this->hasOne(OwnerFolio::class, 'id', 'owner_folio_id')->where('status', true);
     }
     public function reminder_property()

@@ -80,7 +80,6 @@ class MessageWithMailReplyController extends Controller
                     }
                 }
 
-
                 try {
                     Mail::to($request->to)->send(new Messsage($request));
                     if ($id == null) {
@@ -114,14 +113,12 @@ class MessageWithMailReplyController extends Controller
                         "watch" => 1,
                     ]);
 
-
                     return response()->json([
                         'mail_id' => $request->mail_id ? $request->mail_id : $messageWithMail->id,
                         'status' => 'success',
                         'message' => 'successful'
                     ], 200);
                 } catch (\Exception $e) {
-
                     $messageWithMailUpdate = MessageWithMailReply::where('id', $request->mail_id ? $request->mail_id : $messageWithMail->id)->update(["status" => "undelivered"]);
                     return response()->json([
                         "status" => false,
@@ -130,8 +127,6 @@ class MessageWithMailReplyController extends Controller
                         "data" => []
                     ], 500);
                 }
-                // $mail=new Messsage($request);
-
             }
         } catch (\Throwable $th) {
             return response()->json([

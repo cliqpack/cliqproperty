@@ -392,7 +392,6 @@ class BrandSettingController extends Controller
 
     public function createOrUpdateEmailSettings(Request $request)
     {
-        // return $request;
         try {
             $companyId = Auth::guard('api')->user()->company_id;
             $validationRules = [
@@ -418,7 +417,6 @@ class BrandSettingController extends Controller
                 'selectedFont' => 'nullable|string',
                 'selectedFontSize' => 'nullable|integer',
                 'type' => 'nullable|string',
-                // 'headerImg' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5048',
                 'headerText' => 'nullable|string',
                 'footerText' => 'nullable|string',
                 'headerImgHeight' => 'nullable|integer',
@@ -433,6 +431,11 @@ class BrandSettingController extends Controller
                     'data' => [],
                 ], 400);
             }
+
+            // Convert "null" string or empty values to null
+            $headerText = $request->input('headerText') === "null" || empty($request->input('headerText')) ? null : $request->input('headerText');
+            $footerText = $request->input('footerText') === "null" || empty($request->input('footerText')) ? null : $request->input('footerText');
+
             $data = [
                 'left_header_btn' => $request->input('leftHeaderBtn'),
                 'middlet_header_btn' => $request->input('middletHeaderBtn'),
@@ -446,8 +449,6 @@ class BrandSettingController extends Controller
                 'left_footer_text_btn' => $request->input('leftFooterTextBtn'),
                 'middle_footer_text_btn' => $request->input('middleFooterTextBtn'),
                 'right_footer_text_btn' => $request->input('rightFooterTextBtn'),
-                // 'reason_modal' => $request->input('reasonModal'),
-                // 'checked' => $request->input('checked'),
                 'header_bg_color' => $request->input('headerBgColor'),
                 'footer_bg_color' => $request->input('footerBgColor'),
                 'body_color' => $request->input('bodyColor'),
@@ -455,8 +456,8 @@ class BrandSettingController extends Controller
                 'height' => $request->input('height'),
                 'header_color' => $request->input('headerColor'),
                 'footer_color' => $request->input('footerColor'),
-                'header_text' => $request->input('headerText'),
-                'footer_text' => $request->input('footerText'),
+                'header_text' => $headerText, 
+                'footer_text' => $footerText,
                 'header_img_height' => $request->input('headerImgHeight'),
                 'footer_img_height' => $request->input('footerImgHeight'),
                 'selected_font' => $request->input('selectedFont'),
@@ -464,119 +465,22 @@ class BrandSettingController extends Controller
                 'company_id' => $companyId,
             ];
 
+            // Handle header and footer image uploads and deletions here...
 
-            $headerImage = null;
-            if ($request->hasFile('headerImg')) {
-                $file = $request->file('headerImg');
-                $filename = $file->getClientOriginalName();
-                $fileSize = $file->getSize();
-
-
-                $path = config('app.asset_s') . '/Image';
-                $filename_s3 = Storage::disk('s3')->put($path, $file);
-
-
-                $headerImage = BrandSettingEmailImage::updateOrCreate(
-                    [
-                        'company_id' => Auth::guard('api')->user()->company_id,
-                        'type' => "header"
-                    ],
-                    [
-                        'mail_image' =>  $filename_s3,
-                        'image_name' => $filename,
-                        'file_size' => $fileSize,
-
-                    ]
-                );
-            }
-            $footerImage = null;
-            if ($request->hasFile('footerImg')) {
-                $file = $request->file('footerImg');
-                $filename = $file->getClientOriginalName();
-                $fileSize = $file->getSize();
-
-
-                $path = config('app.asset_s') . '/Image';
-                $filename_s3 = Storage::disk('s3')->put($path, $file);
-
-
-                $footerImage = BrandSettingEmailImage::updateOrCreate(
-                    [
-                        'company_id' => Auth::guard('api')->user()->company_id,
-                        'type' => "footer"
-                    ],
-                    [
-                        'mail_image' =>  $filename_s3,
-                        'image_name' => $filename,
-                        'file_size' => $fileSize,
-
-                    ]
-                );
-            }
-            if ($request->headerImageRemoved != "null") {
-                try {
-                    $companyId = Auth::guard('api')->user()->company_id;
-                    // $typeToRemove = $request->input('imageRemoved');
-
-                    $deletedCount = BrandSettingEmailImage::where('company_id', $companyId)
-                        ->where('type', 'header')
-                        ->delete();
-                } catch (\Exception $ex) {
-                    return response()->json([
-                        'status' => false,
-                        'error' => 'An error occurred',
-                        'message' => $ex->getMessage(),
-                        'data' => [],
-                    ], 500);
-                }
-
-                // try {
-
-
-                //     $companyId = Auth::guard('api')->user()->company_id;
-
-                //         BrandSettingEmailImage::where('company_id', $companyId)->where('type', $request->imageRemoved)->delete();
-                // } catch (\Exception $ex) {
-                //     return response()->json([
-                //         'status' => false,
-                //         'error' => ['error'],
-                //         'message' => $ex->getMessage(),
-                //         'data' => [],
-                //     ], 500);
-                // }
-            }
-            if ($request->footerImageRemoved != "null") {
-                try {
-                    // return "hello";
-
-                    $companyId = Auth::guard('api')->user()->company_id;
-                    DB::transaction(function () use ($companyId, $request) {
-                        BrandSettingEmailImage::where('company_id', $companyId)->where('type', 'footer')->delete();
-                    });
-
-                    // return response()->json([
-                    //     'message' => 'Image deleted successfully',
-                    // ], 200);
-                } catch (\Exception $ex) {
-                    return response()->json([
-                        'status' => false,
-                        'error' => ['error'],
-                        'message' => $ex->getMessage(),
-                        'data' => [],
-                    ], 500);
-                }
-            }
             $settings = BrandSettingEmail::updateOrCreate(
                 ['company_id' => $companyId],
                 $data
             );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Settings created/updated successfully',
                 'data' => [
                     'email_settings' => $settings,
-                    'email_image' => $headerImage && null,
-                    'email_image' => $footerImage && null
+                    'email_image' => [
+                        'header_image' => $headerImage ?? null,
+                        'footer_image' => $footerImage ?? null
+                    ]
                 ],
             ], 200);
         } catch (\Throwable $th) {
@@ -588,6 +492,7 @@ class BrandSettingController extends Controller
             ], 500);
         }
     }
+
 
     public function deleteHeaderLogo(Request $request)
     {

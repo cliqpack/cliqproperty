@@ -51,7 +51,7 @@ class BuyerController extends Controller
      */
     public function store(Request $request)
     {
-        // return $request;
+        return $request;
         try {
             $attributeNames = array(
                 // Buyer Contact
@@ -185,6 +185,7 @@ class BuyerController extends Controller
                                 $contactPostalAddress->country = $request->postal[$key]['postal_country'];
 
                                 $contactPostalAddress->save();
+
 
                                 foreach ($contact['check'] as $c) {
                                     $communication = new ContactCommunication();
@@ -349,7 +350,7 @@ class BuyerController extends Controller
 
                     $activity_email_template = new PropertyActivityEmail();
                     $activity_email_template->email_to = $sellerContact->email;
-                    $activity_email_template->email_from = "no-reply@cliqproperty.com";
+                    $activity_email_template->email_from = "no-reply@myday.com";
                     $activity_email_template->subject = " Contracted - " . $propsData->reference;
                     $activity_email_template->email_body = "<p>This seller has Been Contracted</p>";
                     $activity_email_template->email_status = "pending";
@@ -359,7 +360,7 @@ class BuyerController extends Controller
                     $messageWithMail = new MessageWithMail();
                     $messageWithMail->property_id = $sellerContact->property_id;
                     $messageWithMail->to       = $sellerContact->email ? $sellerContact->email : "no_seller_email@mail.com";
-                    $messageWithMail->from     = "no-reply@cliqproperty.com";
+                    $messageWithMail->from     = "no-reply@myday.com";
                     $messageWithMail->subject  = " Contracted - " . $propsData->reference;
                     $messageWithMail->body     = "<p>This seller has Been Contracted</p>";
                     $messageWithMail->status   = "Outbox";
@@ -378,7 +379,7 @@ class BuyerController extends Controller
 
                     $activity_email_template = new PropertyActivityEmail();
                     $activity_email_template->email_to = $request->contacts[0]['email'];
-                    $activity_email_template->email_from = "no-reply@cliqproperty.com";
+                    $activity_email_template->email_from = "no-reply@myday.com";
                     $activity_email_template->subject = " Contracted - " . $propsData->reference;
                     $activity_email_template->email_body = "<p>This buyer has Been Contracted</p>";
                     $activity_email_template->email_status = "pending";
@@ -388,7 +389,7 @@ class BuyerController extends Controller
                     $messageWithMail = new MessageWithMail();
                     $messageWithMail->property_id = $request->property_id;
                     $messageWithMail->to       = $request->contacts[0]['email'] ? $request->contacts[0]['email'] : "no_owner_email@mail.com";
-                    $messageWithMail->from     = "no-reply@cliqproperty.com";
+                    $messageWithMail->from     = "no-reply@myday.com";
                     $messageWithMail->subject  = " Contracted - " . $propsData->reference;
                     $messageWithMail->body     = "<p>This buyer has Been Contracted</p>";
                     $messageWithMail->status   = "Outbox";

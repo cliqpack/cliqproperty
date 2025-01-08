@@ -36,11 +36,18 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/contactRole', [Modules\Contacts\Http\Controllers\ContactsController::class, 'contactRole']);
     Route::post('/addsupplier', [Modules\Contacts\Http\Controllers\ContactsController::class, 'storeCompanySupplier']);
 
+    // ARCHIVE CONTACT ROUTES
+    Route::resource('/contacts-archive', ContactArchiveController::class);
+    Route::get('/archive-contact/{id}', [Modules\Contacts\Http\Controllers\ContactArchiveController::class, 'archiveContact']);
+    Route::get('/restore-contact/{id}', [Modules\Contacts\Http\Controllers\ContactArchiveController::class, 'restoreContact']);
+
     //Property Owners
 
     Route::resource('/owners', OwnerController::class);
     Route::post('/property/owner/store', [Modules\Contacts\Http\Controllers\OwnerController::class, 'owner_contact_store']);
     Route::get('/property/owner/info/{propertyId}', [Modules\Contacts\Http\Controllers\OwnerController::class, 'property_owner_info']);
+    Route::get('/property/owner/info/witharchive/{propertyId}', [Modules\Contacts\Http\Controllers\OwnerController::class, 'property_owner_info_with_archive']);
+    Route::get('/restore/owner/{id}', [Modules\Contacts\Http\Controllers\OwnerController::class, 'restoreOwner']);
     Route::get('/property/all/owner/info/{propertyId}', [Modules\Contacts\Http\Controllers\OwnerController::class, 'property_all_owner_info']);
     Route::get('/get_ownerFolio/{id}', [Modules\Contacts\Http\Controllers\OwnerController::class, 'get_ownerFolio']);
     Route::get('/owner/folio/edit/{id}/{folioId}', [Modules\Contacts\Http\Controllers\OwnerController::class, 'OwnerFolioEdit']);
@@ -62,11 +69,13 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/property/tenant/folio', [Modules\Contacts\Http\Controllers\TenantController::class, 'tenant_folio_store']);
     Route::put('/property/tenant/contact/{id}', [Modules\Contacts\Http\Controllers\TenantController::class, 'tenant_contact_update']);
     Route::get('/property/tenant/info/{propertyId}', [Modules\Contacts\Http\Controllers\TenantController::class, 'property_tenant_info']);
+    Route::get('/tenant/info/{tenantId}', [Modules\Contacts\Http\Controllers\TenantController::class, 'tenant_info']);
     Route::post('/property/tenant/status/{id}', [Modules\Contacts\Http\Controllers\TenantController::class, 'property_tenant_leave']);
 
     Route::post('/disburse/tenant', [Modules\Contacts\Http\Controllers\TenantController::class, 'disburseTenant']);
     Route::get('/property/tenant/due', [Modules\Contacts\Http\Controllers\TenantController::class, 'property_tenant_due']);
     Route::post('/property-tenant-due-check-and-archive', [Modules\Contacts\Http\Controllers\TenantController::class, 'property_tenant_due_check_and_archive']);
+    Route::get('/restore-tenant/{id}', [Modules\Contacts\Http\Controllers\TenantController::class, 'restore_tenant']);
     Route::post('/property-tenant-due-check', [Modules\Contacts\Http\Controllers\TenantController::class, 'property_tenant_due_check']);
     Route::get('/property-tenants/{id}', [Modules\Contacts\Http\Controllers\TenantController::class, 'propertyTenant']);
     Route::get('/make-tenant/{propId}/{fId}', [Modules\Contacts\Http\Controllers\TenantController::class, 'makeTenant']);
@@ -83,9 +92,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/sellAgreement/{id}', [Modules\Contacts\Http\Controllers\SellerController::class, 'salesAgreement']);
     Route::get('/salesAgreementInfo/{id}/{sellerId}', [Modules\Contacts\Http\Controllers\SellerController::class, 'salesAgreementInfo']);
     Route::get('/salesInfo/{id}', [Modules\Contacts\Http\Controllers\SellerController::class, 'salesInfo']);
+    Route::get('/salesInfoWithArchive/{id}', [Modules\Contacts\Http\Controllers\SellerController::class, 'salesInfoWithArchive']);
+    Route::get('/restore/seller/{id}', [Modules\Contacts\Http\Controllers\SellerController::class, 'restoreSeller']);
 
     // contact Labels
     Route::resource('contact/info/label', ContactLabelController::class);
+    Route::post('/contact/info/label/update', [Modules\Contacts\Http\Controllers\ContactLabelController::class, 'updateLabels']);
     Route::get('/getContactDoc/{id}', [Modules\Contacts\Http\Controllers\ContactsController::class, 'getContactDoc']);
 
     //property seller
@@ -105,7 +117,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('contacts/message/mail/template/filter', [Modules\Contacts\Http\Controllers\MessageActivityController::class, 'messagesMailTemplatefilter']);
     Route::get('contacts/message/mail/template/search', [Modules\Contacts\Http\Controllers\MessageActivityController::class, 'search']);
 
-
+    //all contact message activity
+    Route::post('multiple/contacts/message/mail/template/activity', [Modules\Contacts\Http\Controllers\MessageActivityController::class, 'MultipleContactTemplateActivityStore']);
 
     /**
      * New separate route for the specified Tenant.
@@ -140,9 +153,12 @@ Route::middleware('auth:api')->group(function () {
 
     // SUPPLIER FOLIO
     Route::get('/supplier-folio-info/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_folio_info']);
+    Route::get('/supplier-folio-info-with-archive/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_folio_info_with_archive']);
     Route::get('/supplier-transaction-list', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'current_list_by_month']);
     Route::get('/supplier-pending-bill/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_pending_bill']);
     Route::get('/supplier-paid-bill/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_paid_bill']);
     Route::get('/supplier-pending-invoice/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_pending_invoice']);
     Route::get('/supplier-disbursement/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_disbursement']);
+    Route::get('/supplier-due-check-and-archive/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'supplier_due_check_and_archive']);
+    Route::get('/restore/supplier/{id}', [Modules\Contacts\Http\Controllers\Supplier\SupplierFolioController::class, 'restoreSupplier']);
 });

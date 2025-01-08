@@ -4,10 +4,10 @@
 </style>
 <aside class="main-sidebar sidebar-light-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="{{url('home')}}" class="brand-link">
+    <a href="index.php" class="brand-link">
         <!-- <img src="dist/img/WEBLAB.svg" alt="WEBLAB Logo" class="brand-image img-circle elevation-3"> -->
         
-        <img src="dist/img/cliqproperty.png" alt="CliqProperty Logo" class="brand-image" style="height: 300px;">
+        <img src="dist/img/myday.png" alt="WEBLAB Logo" class="brand-image">
     </a>
 
     <!-- Sidebar -->
@@ -88,6 +88,8 @@
                         </p>
                     </a>
                 </li>
+                
+                
             </ul>
         </nav>
         <!-- /.sidebar-menu -->

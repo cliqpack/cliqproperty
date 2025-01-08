@@ -17,8 +17,6 @@ class OwnerFolio extends Model
     use HasFactory;
 
     protected $fillable = [
-        //  'agreement_start',
-        // 'owner_access',
         'owner_contact_id',
     ];
 

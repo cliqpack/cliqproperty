@@ -57,6 +57,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/propertyDocEdit/{id}', [Modules\Properties\Http\Controllers\PropertiesController::class, 'propertyDocEdit']);
     Route::get('/deletePropertyDoc/{id}', [Modules\Properties\Http\Controllers\PropertiesController::class, 'deletePropertyDoc']);
 
+    Route::put('/documents/{id}/access', [Modules\Properties\Http\Controllers\PropertiesController::class, 'updateDocumentAccess']);
+
 
     Route::post('/addPropertyMember', [Modules\Properties\Http\Controllers\PropertiesController::class, 'addPropertyMember']);
     Route::get('/get_property_type', [Modules\Properties\Http\Controllers\PropertiesController::class, 'get_property_type']);
@@ -142,6 +144,10 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/get-strata-manager', [SupplierController::class, 'index']);
     Route::post('/propertiesGeneratedAndUploadedDoc/{id}', [Modules\Properties\Http\Controllers\PropertiesController::class, 'getPropertyDocWithUploadedAndGenerated']);
+
+
+    Route::post('properties/labels', 'PropertiesLabelController@getLabelsByProperties');
+    Route::post('/properties/update-labels', 'PropertiesLabelController@updateLabels');
 });
 
 Route::get('/rooms/{propId}/{insId}', [Modules\Properties\Http\Controllers\PropertyRoomController::class, 'show_room_overView']);

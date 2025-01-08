@@ -38,38 +38,20 @@ class MessageActivityController extends Controller
     {
         try {
             $template = [];
-            $template = MailTemplate::where('message_action_name', "Contacts");
-
-            if ($request->trigger_to2) {
-                $template = $template->whereIn('message_trigger_to', $request->trigger_to2);
-            }
-
-            if ($request->query) {
+            if (!empty($request->query)) {
                 $query = $request->input('query');
 
-                $template = $template->where('subject', 'like', "%$query%");
+                $template = MailTemplate::where('message_action_name', "Contact")
+                    ->where('subject', 'like', "%$query%")
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->get();
+            } else {
+                $template = MailTemplate::where('message_action_name', "Contact")
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->get();
             }
 
-            $template = $template->get();
-            // if (!empty($request->query)) {
-            //     $query = $request->input('query');
-            //     $template = MailTemplate::where('message_action_name', 'Contacts')->whereIn('message_trigger_to', $request->trigger_to2)->where('subject', 'like', "%$query%")->get();
-            // } else {
-            //     $template = MailTemplate::whereIn('message_trigger_to', $request->trigger_to2)->where('message_action_name', "Contacts")->get();
-            // }
-            // return $request->trigger_to;
-            // $template = [];
-            // foreach ($request->trigger_to as $value) {
-            //     $data = MailTemplate::where('message_trigger_to', $value['value'])->where('message_action_name', "Contacts")->get();
-            //     foreach ($data as $value) {
-            //         if (!empty($value)) {
-            //             array_push($template, $value);
-            //         }
-            //     }
-            // }
-            // return $template;
             return response()->json([
-                // 'property' => $properties,
                 'data' => $template,
                 'message' => 'successfully show'
             ]);
@@ -86,51 +68,113 @@ class MessageActivityController extends Controller
     public function TemplateActivityStore(Request $request)
     {
         try {
-            // return $request;
-            $attributesNames = array(
-                'template_id' => $request->template_id,
-                'contact_id' => $request->contact_id,
+            $contactIds = is_array($request->input('contact_id'))
+                ? $request->input('contact_id')
+                : [$request->input('contact_id')];
 
-            );
+            $validator = Validator::make([
+                'template_id' => $request->template_id,
+                'contact_id' => $contactIds,
+            ], [
+                'template_id' => 'required|exists:mail_templates,id',
+                'contact_id' => 'required|array',
+                'contact_id.*' => 'exists:contacts,id',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->getMessageBag()->toArray()], 422);
+            }
+
+            $mailtemplate = MailTemplate::where('id', $request->template_id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->first();
+
+            if (!$mailtemplate) {
+                return response()->json(['message' => 'Template not found or not authorized.'], 404);
+            }
+
+            foreach ($contactIds as $contactId) {
+                $contact = Contacts::find($contactId);
+
+                if ($contact) {
+                    $message_action_name = "Contact";
+
+                    $data = [
+                        "id" => $contactId,
+                        'status' => $request->subject,
+                        "property_id" => null,
+                        'template_id' => $mailtemplate->id,
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', null, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+            }
+
+            return response()->json(['message' => 'Successful'], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => 'false',
+                'error' => [$th->getMessage()],
+                'message' => 'An error occurred while processing',
+                "data" => []
+            ], 500);
+        }
+    }
+
+
+    public function MultipleContactTemplateActivityStore(Request $request)
+    {
+
+        try {
+            $contactIds = $request->contact_id;
+
+            $attributesNames = [
+                'template_id' => $request->template_id,
+                'contact_ids' => $contactIds
+            ];
+
             $validator = Validator::make($attributesNames, []);
 
             if ($validator->fails()) {
-                return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
+                return response()->json(['errors' => $validator->getMessageBag()->toArray()], 422);
             } else {
 
-                // $message = Maintenance::where('id', $request->job_id)->update(["status" => "Reported"]);
-                // $properties = Properties::where('id', $request->property_id)->first();
-                $contact = Contacts::where('id', $request->contact_id)->first();
-                $contactId =  $contact->id;
+                $mailtemplate = MailTemplate::where('id', $request->template_id)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->first();
 
-                $mailtemplate = MailTemplate::where('id', $request->template_id)->where('company_id', auth('api')->user()->company_id)->first();
-                // return $mailtemplate;
-                // $message = MessageWithMail::where('id', $request->message_id)->where('company_id', auth('api')->user()->company_id)->first();
+                $message_action_name = "Contact";
+                $messsage_trigger_point = 'Manual';
 
-                $message_action_name = "contact";
-                $messsage_trigger_point = 'contact';
-                $data = [
 
-                    // "property_id" => $properties->id,
-                    // "tenant_contact_id" =>  $properties->tenant_id,
-                    // "owner_contact_id" =>  $properties->owner_id,
-                    "id" => $contactId,
-                    'status' => $request->subject,
-                    "property_id" => null,
-                    "tenant_contact_id" => null,
-                ];
+                foreach ($contactIds as $contactId) {
+                    $contact = Contacts::where('id', $contactId)->first();
 
-                $activityMessageTrigger = new MessageAndSmsActivityController($message_action_name, $messsage_trigger_point, $data, "email");
+                    $data = [
+                        "id" => $contact->id,
+                        'status' => $request->subject,
+                        "property_id" => null,
+                        "tenant_contact_id" => null,
+                    ];
 
-                $value = $activityMessageTrigger->trigger();
-                // return $value;
+                    $activityMessageTrigger = new MessageAndSmsActivityController(
+                        $message_action_name,
+                        $messsage_trigger_point,
+                        $data,
+                        "email"
+                    );
 
-                return response()->json(['message' => 'successfull'], 200);
+                    $value = $activityMessageTrigger->trigger();
+                }
+
+                return response()->json(['message' => 'successful'], 200);
             }
         } catch (\Throwable $th) {
             return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
         }
     }
+
     /**
      * Display a listing of the resource.
      * @return Renderable

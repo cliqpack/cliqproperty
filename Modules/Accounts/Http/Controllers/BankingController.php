@@ -27,6 +27,13 @@ class BankingController extends Controller
         return view('accounts::index');
     }
 
+    /**
+     * Retrieve the details of bank deposits, grouped by month, year, and payment method.
+     * Returns a JSON response with the total amount of pending deposits for each group.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @return \Illuminate\Http\JsonResponse - A successful response with the grouped deposit details or an error response with exception details.
+     */
     public function bankDepositListDetails()
     {
         try {
@@ -45,6 +52,16 @@ class BankingController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Retrieve details of monthly deposits for a specific month and year.
+     * Returns the list of deposit details along with a success message in a JSON response.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param int $month - The month to retrieve deposit details for.
+     * @param int $year - The year to retrieve deposit details for.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the deposit details or an error response with exception details.
+     */
     public function monthlyDepositListDetails($month, $year)
     {
         try {
@@ -54,6 +71,14 @@ class BankingController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Retrieve the current list of all-in-one bank deposits for the authenticated user's company.
+     * Returns a JSON response with the current list of bank deposits.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @return \Illuminate\Http\JsonResponse - A successful response with the current bank deposit list or an error response with exception details.
+     */
     public function currentDepositListOneData()
     {
         try {
@@ -63,6 +88,15 @@ class BankingController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Retrieve details of a specific current bank deposit.
+     * Returns the list of deposit details along with a success message in a JSON response.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param int $id - The ID of the current bank deposit list to retrieve details for.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the deposit details or an error response with exception details.
+     */
     public function currentDepositData($id)
     {
         try {
@@ -110,6 +144,17 @@ class BankingController extends Controller
         //
     }
 
+    /**
+     * Deposit all pending bank deposits into the current bank deposit list.
+     * This function performs a series of database operations within a transaction:
+     * 1. Retrieves all pending bank deposit lists and calculates totals for different payment methods (Cash, Card, Cheque, Total).
+     * 2. Creates a new entry in CurrentAllInOneBankDeposit to record the current deposit.
+     * 3. Updates statuses in BankDepositList and Receipt tables and adjusts uncleared amounts in respective folio types (Owner, Supplier, Tenant, Seller).
+     * 4. Creates entries in CurrentAllInOneBankDepositList to link deposits with the current deposit.
+     * If any exception occurs during these operations, it rolls back the transaction and returns a 500 error response with the exception message.
+     *
+     * @return \Illuminate\Http\JsonResponse - A JSON response indicating success or failure of the deposit operation.
+     */
     public function depositAlllData()
     {
         try {
@@ -174,6 +219,17 @@ class BankingController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Deposit selected bank deposit list items.
+     * Updates the status of the selected deposit items to 'Deposited' and associated receipts to 'Cleared'.
+     * Aggregates the amounts for each payment method (cash, card, cheque) and creates a new deposit record.
+     * Returns a success message in a JSON response.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param \Illuminate\Http\Request $request - The request object containing the list of selected deposit item IDs.
+     * @return \Illuminate\Http\JsonResponse - A successful response with a message or an error response with exception details.
+     */
     public function depositSelectedData(Request $request)
     {
         try {
@@ -250,6 +306,20 @@ class BankingController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Cancel the last bank deposit based on the provided request data.
+     * This function performs a series of database operations within a transaction:
+     * 1. Deletes entries from the CurrentAllInOneBankDepositList table.
+     * 2. Updates entries in the BankDepositList table to set status to 'Pending'.
+     * 3. Updates entries in the Receipt table to set status to 'Uncleared' and cleared_date to NULL.
+     * 4. Adjusts uncleared amounts in respective folio types (Owner, Supplier, Tenant).
+     * 5. Deletes the CurrentAllInOneBankDeposit entry itself.
+     * If any exception occurs during these operations, it rolls back the transaction and returns a 500 error response with the exception message.
+     *
+     * @param \Illuminate\Http\Request $request - The HTTP request containing the necessary data to cancel the deposit.
+     * @return \Illuminate\Http\JsonResponse - A JSON response indicating success or failure of the cancellation process.
+     */
     public function cancelLastDiposit(Request $request)
     {
         try {
@@ -292,6 +362,14 @@ class BankingController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Retrieve the last deposit record for the authenticated user's company.
+     * Returns a JSON response with the last deposit details.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @return \Illuminate\Http\JsonResponse - A successful response with the last deposit details or an error response with exception details.
+     */
     public function getLastDiposit()
     {
         try {

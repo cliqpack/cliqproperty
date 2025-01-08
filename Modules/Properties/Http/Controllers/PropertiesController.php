@@ -69,37 +69,74 @@ class PropertiesController extends Controller
     }
     public function index_ssr(Request $request)
     {
-        // try {
+        try {
             $page_qty = $request->sizePerPage;
             $property = [];
             $propertyAll = 0;
 
-            $offset = 0;
             $offset = $page_qty * ($request->page - 1);
 
             if ($request->q != 'null') {
-                $managers = DB::table('properties')->join('users', 'users.id', '=', 'properties.manager_id')->groupBy('properties.manager_id')->where('properties.company_id', auth('api')->user()->company_id)->where('users.first_name', 'like', '%' . $request->q . '%')->orWhere('users.last_name', 'like', '%' . $request->q . '%')->pluck('properties.manager_id');
-                $tenant_contacts = DB::table('properties')->join('tenant_contacts', 'tenant_contacts.property_id', '=', 'properties.id')->groupBy('properties.id')->where('properties.company_id', auth('api')->user()->company_id)->where('tenant_contacts.reference', 'like', '%' . $request->q . '%')->pluck('properties.id');
+                $managers = DB::table('properties')
+                    ->join('users', 'users.id', '=', 'properties.manager_id')
+                    ->groupBy('properties.manager_id')
+                    ->where('properties.company_id', auth('api')->user()->company_id)
+                    ->where('users.first_name', 'like', '%' . $request->q . '%')
+                    ->orWhere('users.last_name', 'like', '%' . $request->q . '%')
+                    ->pluck('properties.manager_id');
 
-                // $tenant_contacts = TenantContact::where('reference', 'LIKE', '%' . $request->q . '%')->where('company_id', auth('api')->user()->company_id)->groupBy('property_id')->pluck('property_id');
-                // return $tenant_contacts;
-                // return $ddd;
-                $owner_contacts = DB::table('properties')->join('owner_contacts', 'properties.id', '=', 'owner_contacts.property_id')->groupBy('properties.id')->where('properties.company_id', auth('api')->user()->company_id)->where('owner_contacts.reference', 'like', '%' . $request->q . '%')->pluck('properties.id');
-                $properties_labels = DB::table('properties')->join('properties_labels', 'properties.id', '=', 'properties_labels.property_id')->groupBy('properties.id')->where('properties.company_id', auth('api')->user()->company_id)->where('properties_labels.labels', 'like', '%' . $request->q . '%')->pluck('properties.id');
+                $tenant_contacts = DB::table('properties')
+                    ->join('tenant_contacts', 'tenant_contacts.property_id', '=', 'properties.id')
+                    ->groupBy('properties.id')
+                    ->where('properties.company_id', auth('api')->user()->company_id)
+                    ->where('tenant_contacts.reference', 'like', '%' . $request->q . '%')
+                    ->pluck('properties.id');
+
+                $owner_contacts = DB::table('properties')
+                    ->join('owner_contacts', 'properties.id', '=', 'owner_contacts.property_id')
+                    ->groupBy('properties.id')
+                    ->where('properties.company_id', auth('api')->user()->company_id)
+                    ->where('owner_contacts.reference', 'like', '%' . $request->q . '%')
+                    ->pluck('properties.id');
+
+                $properties_labels = DB::table('properties')
+                    ->join('properties_labels', 'properties.id', '=', 'properties_labels.property_id')
+                    ->groupBy('properties.id')
+                    ->where('properties.company_id', auth('api')->user()->company_id)
+                    ->where('properties_labels.labels', 'like', '%' . $request->q . '%')
+                    ->pluck('properties.id');
 
                 $property = Properties::where('company_id', auth('api')->user()->company_id)
                     ->where('status', '!=', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
                     ->orWhereIn('manager_id', $managers)
                     ->orWhereIn('id', $owner_contacts)
                     ->orWhereIn('id', $properties_labels)
-                    ->offset($offset)->limit($page_qty)
+                    ->offset($offset)
+                    ->limit($page_qty)
                     ->orderBy($request->sortField, $request->sortValue)
                     ->with('property_images', 'properties_level', 'ownerFolio:id,folio_code,property_id', 'currentOwner')
                     ->get();
+
                 $propertyAll = Properties::where('company_id', auth('api')->user()->company_id)
                     ->where('status', '!=', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
                     ->orWhereIn('manager_id', $managers)
@@ -108,29 +145,62 @@ class PropertiesController extends Controller
                     ->orderBy($request->sortField, $request->sortValue)
                     ->get();
             } else {
-                $property = Properties::with('property_images', 'properties_level', 'ownerFolio:id,folio_code,property_id', 'currentOwner')->where('company_id', auth('api')->user()->company_id)->where('status', '!=', 'Archived')->offset($offset)->limit($page_qty)->get();
-                $propertyAll = Properties::where('company_id', auth('api')->user()->company_id)->where('status', '!=', 'Archived')->get();
+                $property = Properties::with('property_images', 'properties_level', 'ownerFolio:id,folio_code,property_id', 'currentOwner')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->where('status', '!=', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->offset($offset)
+                    ->limit($page_qty)
+                    ->get();
+
+
+                $propertyAll = Properties::where('company_id', auth('api')->user()->company_id)
+                    ->where('status', '!=', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->get();
             }
-
-
-
-
 
             return response()->json([
                 'data' => $property,
                 'length' => count($propertyAll),
                 'page' => $request->page,
                 'sizePerPage' => $request->sizePerPage,
-                'message' => 'Successfull'
+                'message' => 'Successful'
             ], 200);
-            
-        // } catch (\Exception $ex) {
-        //     return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
-        // }
+        } catch (\Exception $ex) {
+            return response()->json([
+                "status" => false,
+                "error" => ['error'],
+                "message" => $ex->getMessage(),
+                "data" => []
+            ]);
+        }
     }
 
 
-
+    /**
+     * This function retrieves a list of properties eligible for invoicing.
+     * It includes properties that are not archived, have an owner folio assigned,
+     * are marked as tenant occupied, and belong to the authenticated user's company.
+     * Returns the list of properties in a JSON response with a success message.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @return \Illuminate\Http\JsonResponse - A successful response with the list of properties or an error response with exception details.
+     */
     public function invoiceProperties()
     {
         try {
@@ -173,7 +243,6 @@ class PropertiesController extends Controller
             $offset = 0;
             $offset = $page_qty * ($request->page - 1);
             if ($request->q != 'null') {
-                // return "ehll";
                 $managers = DB::table('properties')->join('users', 'users.id', '=', 'properties.manager_id')->groupBy('properties.manager_id')->where('properties.company_id', auth('api')->user()->company_id)->where('users.first_name', 'like', '%' . $request->q . '%')->orWhere('users.last_name', 'like', '%' . $request->q . '%')->pluck('properties.manager_id');
                 // return $managers;
                 $tenant_contacts = DB::table('properties')->join('tenant_contacts', 'tenant_contacts.property_id', '=', 'properties.id')->groupBy('properties.id')->where('properties.company_id', auth('api')->user()->company_id)->where('tenant_contacts.reference', 'like', '%' . $request->q . '%')->pluck('properties.id');
@@ -184,6 +253,14 @@ class PropertiesController extends Controller
 
                 $propsData = Properties::where('company_id', auth('api')->user()->company_id)
                     ->where('status',  'Vacancies')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
@@ -196,6 +273,14 @@ class PropertiesController extends Controller
                     ->get();
                 $propsDataAll = Properties::where('company_id', auth('api')->user()->company_id)
                     ->where('status',  'Vacancies')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
@@ -208,8 +293,31 @@ class PropertiesController extends Controller
                 $properties = new Properties();
                 $tenantProperty = TenantProperty::where('status', 'true')->pluck('property_id')->toArray();
                 $propsWithTenant = $properties->where('status',  'Vacancies')->where('company_id', auth('api')->user()->company_id)->orWhereNotIn('id', $tenantProperty)->pluck('id')->toArray();
-                $propsData = $properties->with('property_images', 'tenant.tenantFolio', 'ownerOne.ownerFolio')->whereIn('id', $propsWithTenant)->where('company_id', auth('api')->user()->company_id)->offset($offset)->limit($page_qty)->get();
-                $propsDataAll = $properties->whereIn('id', $propsWithTenant)->where('company_id', auth('api')->user()->company_id)->get();
+                $propsData = $properties->with('property_images', 'tenant.tenantFolio', 'ownerOne.ownerFolio')
+                    ->whereIn('id', $propsWithTenant)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->offset($offset)
+                    ->limit($page_qty)
+                    ->get();
+                $propsDataAll = $properties->whereIn('id', $propsWithTenant)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->get();
             }
             return response()->json([
                 'data' => $propsData,
@@ -254,7 +362,6 @@ class PropertiesController extends Controller
             $offset = 0;
             $offset = $page_qty * ($request->page - 1);
             if ($request->q != 'null') {
-                // return "hello";
                 $managers = DB::table('properties')->join('users', 'users.id', '=', 'properties.manager_id')->groupBy('properties.manager_id')->where('properties.company_id', auth('api')->user()->company_id)->where('users.first_name', 'like', '%' . $request->q . '%')->orWhere('users.last_name', 'like', '%' . $request->q . '%')->pluck('properties.manager_id');
                 // return $managers;
                 $tenantFolio = TenantFolio::where('company_id', auth('api')->user()->company_id)->whereDate('paid_to', '<=', date('Y-m-d'))->pluck('tenant_contact_id')->toArray();
@@ -267,11 +374,18 @@ class PropertiesController extends Controller
                 $properties_labels = DB::table('properties')->join('properties_labels', 'properties.id', '=', 'properties_labels.property_id')->groupBy('properties.id')->where('properties.company_id', auth('api')->user()->company_id)->where('properties_labels.labels', 'like', '%' . $request->q . '%')->pluck('properties.id');
 
                 $propsData = Properties::where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
                     ->orWhereIn('manager_id', $managers)
-
                     ->orWhereIn('id', $properties_labels)
                     ->offset($offset)->limit($page_qty)
                     ->orderBy($request->sortField, $request->sortValue)
@@ -280,23 +394,57 @@ class PropertiesController extends Controller
                     ->get();
                 // return $propsData;
                 $propsDataAll = Properties::where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
                     ->orWhereIn('manager_id', $managers)
-
                     ->orWhereIn('id', $properties_labels)
                     ->withSum('dueInvoice', 'amount')->withSum('dueInvoice', 'paid')
                     ->orderBy($request->sortField, $request->sortValue)
                     ->with('properties_level', 'ownerFolio:id,folio_code,property_id')
                     ->get();
-                // return  $propsDataAll;
             } else {
                 $tenantFolio = TenantFolio::where('company_id', auth('api')->user()->company_id)->whereDate('paid_to', '<=', date('Y-m-d'))->pluck('tenant_contact_id')->toArray();
                 $tenantContact = TenantContact::whereIn('id', $tenantFolio)->pluck('property_id')->toArray();
 
-                $propsData = Properties::with(['tenant.tenantFolio', 'tenant.invoice', 'owner:id,property_id,contact_id,first_name,last_name'])->withSum('dueInvoice', 'amount')->withSum('dueInvoice', 'paid')->whereIn('id', $tenantContact)->where('company_id', auth('api')->user()->company_id)->offset($offset)->limit($page_qty)->get();
-                $propsDataAll = Properties::with(['tenant.tenantFolio', 'tenant.invoice', 'owner:id,property_id,contact_id,first_name,last_name'])->withSum('dueInvoice', 'amount')->withSum('dueInvoice', 'paid')->whereIn('id', $tenantContact)->where('company_id', auth('api')->user()->company_id)->get();
+                $propsData = Properties::with(['tenant.tenantFolio', 'tenant.invoice', 'owner:id,property_id,contact_id,first_name,last_name'])
+                    ->withSum('dueInvoice', 'amount')
+                    ->withSum('dueInvoice', 'paid')
+                    ->whereIn('id', $tenantContact)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->offset($offset)
+                    ->limit($page_qty)
+                    ->get();
+                $propsDataAll = Properties::with(['tenant.tenantFolio', 'tenant.invoice', 'owner:id,property_id,contact_id,first_name,last_name'])
+                    ->withSum('dueInvoice', 'amount')
+                    ->withSum('dueInvoice', 'paid')
+                    ->whereIn('id', $tenantContact)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->get();
             }
             return response()->json([
                 'data' => $propsData,
@@ -344,11 +492,18 @@ class PropertiesController extends Controller
             $offset = 0;
             $offset = $page_qty * ($request->page - 1);
             if ($request->q != 'null') {
-
                 $managers = DB::table('properties')->join('users', 'users.id', '=', 'properties.manager_id')->groupBy('properties.manager_id')->where('properties.company_id', auth('api')->user()->company_id)->where('users.first_name', 'like', '%' . $request->q . '%')->orWhere('users.last_name', 'like', '%' . $request->q . '%')->pluck('properties.manager_id');
                 $owners = SellerContact::where('first_name', 'LIKE', '%' . $request->q . '%')->orWhere('last_name', 'LIKE', '%' . $request->q . '%')->where('company_id', auth('api')->user()->company_id)->pluck('property_id');
 
                 $properties = Properties::where('company_id', auth('api')->user()->company_id)->where('status', 'Contracted')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('manager_id', $managers)
@@ -359,6 +514,14 @@ class PropertiesController extends Controller
                     ->with('properties_level', 'ownerFolio:id,folio_code,property_id')->with(['salesAgreemet.salesContact', 'salesAgreemet.salesContact.sellerFolio', 'salesAgreemet.buyerContact.buyerFolio'])
                     ->get();
                 $propertiesDataAll = Properties::where('company_id', auth('api')->user()->company_id)->where('status', 'Contracted')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('manager_id', $managers)
@@ -368,8 +531,37 @@ class PropertiesController extends Controller
                     ->with('properties_level', 'ownerFolio:id,folio_code,property_id')->with(['salesAgreemet.salesContact', 'salesAgreemet.salesContact.sellerFolio', 'salesAgreemet.buyerContact.buyerFolio'])
                     ->get();
             } else {
-                $properties = Properties::with('properties_level')->where('status', 'Contracted')->where('company_id', auth('api')->user()->company_id)->orWhere('status', 'Listed')->where('company_id', auth('api')->user()->company_id)->with([ 'salesAgreemet.salesContact', 'salesAgreemet.salesContact.sellerFolio', 'salesAgreemet.buyerContact.buyerFolio'])->offset($offset)->limit($page_qty)->get();
-                $propertiesDataAll = Properties::with('properties_level')->where('status', 'Contracted')->where('company_id', auth('api')->user()->company_id)->orWhere('status', 'Listed')->where('company_id', auth('api')->user()->company_id)->with([ 'salesAgreemet.salesContact', 'salesAgreemet.salesContact.sellerFolio', 'salesAgreemet.buyerContact.buyerFolio'])->get();
+                $properties = Properties::with('properties_level')
+                    ->where('status', 'Contracted')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->orWhere('status', 'Listed')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->with(['salesAgreemet.salesContact', 'salesAgreemet.salesContact.sellerFolio', 'salesAgreemet.buyerContact.buyerFolio'])
+                    ->offset($offset)
+                    ->limit($page_qty)->get();
+                $propertiesDataAll = Properties::with('properties_level')
+                    ->where('status', 'Contracted')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->orWhere('status', 'Listed')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->with(['salesAgreemet.salesContact', 'salesAgreemet.salesContact.sellerFolio', 'salesAgreemet.buyerContact.buyerFolio'])
+                    ->get();
             }
             return response()->json([
                 'data' => $properties,
@@ -423,6 +615,14 @@ class PropertiesController extends Controller
 
                 $property = Properties::where('company_id', auth('api')->user()->company_id)
                     ->where('status', '!=', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
@@ -435,6 +635,14 @@ class PropertiesController extends Controller
                     ->get();
                 $propertyAll = Properties::where('company_id', auth('api')->user()->company_id)
                     ->where('status', '!=', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
@@ -445,11 +653,34 @@ class PropertiesController extends Controller
                     ->get();
             } else {
                 $tenantProperty = TenantProperty::where('status', 'true')->pluck('property_id')->toArray();
-                $property = Properties::with('tenantOne.tenantFolio')->where('company_id', auth('api')->user()->company_id)->whereIn('id', $tenantProperty)->limit($page_qty)->offset($offset)->limit($page_qty)->get();
-                $propertyAll = Properties::with('tenantOne.tenantFolio')->where('company_id', auth('api')->user()->company_id)->whereIn('id', $tenantProperty)->get();
+                $property = Properties::with('tenantOne.tenantFolio')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->whereIn('id', $tenantProperty)
+                    ->limit($page_qty)
+                    ->offset($offset)
+                    ->limit($page_qty)
+                    ->get();
+                $propertyAll = Properties::with('tenantOne.tenantFolio')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->whereIn('id', $tenantProperty)
+                    ->get();
             }
-
-
 
             // return response()->json(['data' => $property, 'message' => 'Successful']);
             return response()->json([
@@ -475,32 +706,154 @@ class PropertiesController extends Controller
     public function propertiesArchivedStatus(Request $request, $property_id)
     {
         try {
-            $status = Properties::where('company_id', auth('api')->user()->company_id)->where('id', $request->property_id)->update(['status' => 'Archived']);
+            $validatedData = $request->validate([
+                'agreement_end' => 'nullable|date',
+                'lost_reason' => 'nullable|string',
+                'comment' => 'nullable|string',
+            ]);
+
+            // Check tenant folio status
+            $tenantFolioData = TenantFolio::where('property_id', $property_id)
+                ->withSum('tenantDueInvoice', 'amount')
+                ->withSum('tenantDueInvoice', 'paid')
+                ->first();
+
+            if ($tenantFolioData) {
+                if ($tenantFolioData->deposit > 0) {
+                    return response()->json([
+                        'message' => "Can't archive property, tenant folio {$tenantFolioData->folio_code} has a deposit balance of $ {$tenantFolioData->deposit}.",
+                        'status' => 'Failed',
+                    ], 400);
+                }
+
+                $totalOutstanding = $tenantFolioData->tenant_due_invoice_sum_amount - $tenantFolioData->tenant_due_invoice_sum_paid;
+                if ($totalOutstanding > 0) {
+                    return response()->json([
+                        'message' => "Can't archive property, tenant folio {$tenantFolioData->folio_code} has outstanding invoices totaling $ {$totalOutstanding}.",
+                        'status' => 'Failed',
+                    ], 400);
+                }
+            }
+
+            // Check owner folio status
+            $ownerFolios = OwnerFolio::where('property_id', $property_id)->withSum('total_bills_amount', 'amount')->first();
+            if ($ownerFolios) {
+                $openingBalance = floatval($ownerFolios->opening_balance) + floatval($ownerFolios->money_in) - floatval($ownerFolios->money_out);
+
+                if ($openingBalance > 0) {
+                    return response()->json([
+                        'message' => "Your balance is not zero, please clear amount $ {$openingBalance}.",
+                        'status' => 'Failed',
+                    ], 400);
+                } elseif (floatval($ownerFolios->total_bills_amount_sum_amount) > 0) {
+                    return response()->json([
+                        'message' => "Cannot archive folio, total outstanding bill is $ {$ownerFolios->total_bills_amount_sum_amount}. Cancel the bill and try again.",
+                        'status' => 'Failed',
+                    ], 400);
+                }
+            }
+
+            // Both tenant and owner conditions passed, proceed with archiving
+            DB::transaction(function () use ($property_id, $validatedData, $ownerFolios, $tenantFolioData) {
+                // Archive the owner-related records if owner folios exist
+                if ($ownerFolios) {
+                    Properties::where('owner_folio_id', $ownerFolios->id)->update([
+                        'owner' => false,
+                        'owner_folio_id' => null,
+                        'owner_contact_id' => null,
+                    ]);
+                    OwnerContact::where('id', $ownerFolios->owner_contact_id)->update(['status' => false]);
+                    OwnerFolio::where('id', $ownerFolios->id)->update(['status' => false, 'archive' => true]);
+                }
+
+                // Archive tenant folio if tenant ID is provided
+                if ($tenantFolioData) {
+                    $tenantContact = TenantContact::find($tenantFolioData->tenant_contact_id);
+                    $tenantContact->status = "false";
+                    $tenantContact->save();
+
+                    $tenantFolio = TenantFolio::find($tenantFolioData->id);
+                    $tenantFolio->status = "false";
+                    $tenantFolio->archive = true;
+                    $tenantFolio->save();
+                }
+
+                // Update property to "Archived" status
+                Properties::where('company_id', auth('api')->user()->company_id)
+                    ->where('id', $property_id)
+                    ->update([
+                        'status' => 'Archived',
+                        'agreement_end' => $validatedData['agreement_end'] ?? null,
+                        'lost_reason' => $validatedData['lost_reason'] ?? null,
+                        'comment' => $validatedData['comment'] ?? null,
+                    ]);
+            });
+
             return response()->json([
-                'message' => 'successfull',
-                'updated_at' => $status
+                'message' => 'Property archived successfully',
+                'status' => 'Success',
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'false',
-                'error' => ['error'],
+                'error' => 'Update failed',
                 'message' => $th->getMessage(),
                 'data' => []
             ], 500);
         }
     }
+
+
     public function propertiesActiveStatus(Request $request, $property_id)
     {
         try {
-            $status = Properties::where('company_id', auth('api')->user()->company_id)->where('id', $request->property_id)->update(['status' => 'Active']);
+            DB::transaction(function () use ($property_id) {
+                Properties::where('company_id', auth('api')->user()->company_id)
+                    ->where('id', $property_id)
+                    ->update([
+                        'status' => 'Active',
+                        'agreement_end' => null,
+                        'lost_reason' => null,
+                        'comment' => null,
+                    ]);
+
+                // Retrieve the owner folio and tenant folio associated with the property
+                $ownerFolios = OwnerFolio::where('property_id', $property_id)->first();
+                $tenantFolioData = TenantFolio::where('property_id', $property_id)->first();
+
+                // Reverse the archive changes on Owner
+                if ($ownerFolios) {
+                    // Update owner-related records to be active
+                    Properties::where('id', $property_id)->update([
+                        'owner' => true,
+                        'owner_folio_id' => $ownerFolios->id,
+                        'owner_contact_id' => $ownerFolios->owner_contact_id,
+                    ]);
+                    OwnerContact::where('id', $ownerFolios->owner_contact_id)->update(['status' => true]);
+                    OwnerFolio::where('id', $ownerFolios->id)->update(['status' => true, 'archive' => false]);
+                }
+
+                // Reverse the archive changes on Tenant
+                if ($tenantFolioData) {
+                    $tenantContact = TenantContact::find($tenantFolioData->tenant_contact_id);
+                    $tenantContact->status = "true";
+                    $tenantContact->save();
+
+                    $tenantFolio = TenantFolio::find($tenantFolioData->id);
+                    $tenantFolio->status = "true";
+                    $tenantFolio->archive = false;
+                    $tenantFolio->save();
+                }
+            });
+
             return response()->json([
-                'message' => 'successfull',
-                'updated_at' => $status
+                'message' => 'Property set to active status successfully',
+                'status' => 'Success',
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'false',
-                'error' => ['error'],
+                'error' => 'Update failed',
                 'message' => $th->getMessage(),
                 'data' => []
             ], 500);
@@ -541,6 +894,14 @@ class PropertiesController extends Controller
                 $properties = Properties::select('id', 'reference', 'bathroom', 'bedroom', 'car_space', 'routine_inspections_frequency_type', 'manager_id')
                     ->where('company_id', auth('api')->user()->company_id)
                     ->where('status', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
@@ -554,6 +915,14 @@ class PropertiesController extends Controller
                 $propertyAll = Properties::select('id', 'reference', 'bathroom', 'bedroom', 'car_space', 'routine_inspections_frequency_type', 'manager_id')
                     ->where('company_id', auth('api')->user()->company_id)
                     ->where('status', 'Archived')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
                     ->orWhereIn('id', $tenant_contacts)
@@ -563,14 +932,36 @@ class PropertiesController extends Controller
                     ->orderBy($request->sortField, $request->sortValue)
                     ->get();
             } else {
-                $properties = Properties::select('id', 'reference', 'bathroom', 'bedroom', 'car_space', 'routine_inspections_frequency_type', 'manager_id')->with('properties_level')->where('status', 'Archived')->where('company_id', auth('api')->user()->company_id)->offset($offset)->limit($page_qty)->get();
+                $properties = Properties::select('id', 'reference', 'bathroom', 'bedroom', 'car_space', 'routine_inspections_frequency_type', 'manager_id')
+                    ->with('properties_level')
+                    ->where('status', 'Archived')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->offset($offset)
+                    ->limit($page_qty)
+                    ->get();
 
-                $propertyAll = Properties::select('id', 'reference', 'bathroom', 'bedroom', 'car_space', 'routine_inspections_frequency_type', 'manager_id')->with('properties_level')->where('status', 'Archived')->where('company_id', auth('api')->user()->company_id)->get();
+                $propertyAll = Properties::select('id', 'reference', 'bathroom', 'bedroom', 'car_space', 'routine_inspections_frequency_type', 'manager_id')
+                    ->with('properties_level')
+                    ->where('status', 'Archived')
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->get();
             }
-
-
-
-
 
             return response()->json([
                 'data' => $properties,
@@ -878,7 +1269,7 @@ class PropertiesController extends Controller
     {
         try {
             $properties = Properties::where('id', $id)
-                ->with('owner', 'owners', 'tenant', 'property_address', 'property_docs','all_property_docs', 'properties_level', 'salesAgreemet', 'property_type', 'property_images', 'reminder_property')
+                ->with('owner', 'owners', 'tenant', 'property_address', 'property_docs', 'all_property_docs', 'properties_level', 'salesAgreemet', 'property_type', 'property_images', 'reminder_property')
                 ->with('currentOwner', 'currentOwner.OwnerFees', 'currentOwner.ownerPropertyFees', 'currentOwner.ownerPayment', 'currentOwnerFolio')
                 ->withCount('reminder')->first();
 
@@ -1379,22 +1770,21 @@ class PropertiesController extends Controller
     public function getAllModulePropertyDoc($id)
     {
         try {
-            $properties = Properties::where('id', $id)->select('id', 'reference')->with('property_docs', 'all_property_docs', 'invoice')->first();
-            return $properties;
+            $properties = Properties::where('id', $id)
+                ->select('id', 'reference')
+                ->with([
+                    'property_docs' => function ($query) {
+                        $query->where('access', 1);
+                    },
+                    'all_property_docs',
+                    'invoice'
+                ])
+                ->first();
 
-
-
-
-            // $propertiesDoc = PropertyDocs::where('property_id', $id)->with(['property' => function ($query) {
-            //     $query->addSelect('id', 'reference');
-            // }])->get();
-            // // return $propertiesDoc;
-
-            // $AllDoc = InspectionTaskMaintenanceDoc::where('property_id', $id)->get();
-            // // return $AllDoc;
-            // $data = $propertiesDoc->concat($AllDoc);
-            // return $data;
-            // return response()->json(['data' => $propertiesDoc, 'message' => 'Successfull'], 200);
+            return response()->json([
+                'data' => $properties,
+                'message' => 'Successful'
+            ], 200);
         } catch (\Throwable $th) {
             return response()->json([
                 "status" => "error",
@@ -1404,6 +1794,7 @@ class PropertiesController extends Controller
             ], 500);
         }
     }
+
 
 
     public function propertyDocEdit(Request $request, $id)
@@ -1442,95 +1833,63 @@ class PropertiesController extends Controller
                         $imageUpload->file_size = $fileSize;
                         if ($request->id != "null") {
                             $imageUpload->property_id = $request->id;
-                            // $imageUpload->save();
                         }
-                        // if ($request->owner_id != "null") {
                         if ($request->owner_id != "null") {
                             $imageUpload->contact_id = $request->contact_id;
                             $imageUpload->owner_id = $request->owner_id;
-                            // $pro = OwnerContact::where('id', $request->owner_id)->first();
-                            // $imageUpload->property_id = $pro->property_id;
-                            // $imageUpload->save();
                         }
                         if ($request->tenant_id != "null") {
                             $imageUpload->contact_id = $request->contact_id;
                             $imageUpload->tenant_id = $request->tenant_id;
-                            // $pro = TenantContact::where('id', $request->tenant_id)->first();
-                            // $imageUpload->property_id = $pro->property_id;
-                            // $imageUpload->save();
                         }
                         if ($request->supplier_id != "null") {
                             $imageUpload->contact_id = $request->contact_id;
                             $imageUpload->supplier_contact_id = $request->supplier_id;
-                            // $pro = TenantContact::where('id', $request->tenant_id)->first();
-                            // $imageUpload->property_id = $pro->property_id;
-                            // $imageUpload->save();
                         }
                         if ($request->seller_id != "null") {
                             $imageUpload->contact_id = $request->contact_id;
                             $imageUpload->seller_contact_id = $request->seller_id;
-                            // $pro = TenantContact::where('id', $request->tenant_id)->first();
-                            // $imageUpload->property_id = $pro->property_id;
-                            // $imageUpload->save();
                         }
                         if ($request->contact_id != "null") {
                             $imageUpload->contact_id = $request->contact_id;
-                            // $pro = Contacts::where('id', $request->contact_id)->first();
-                            // $imageUpload->property_id = $pro->property_id;
-                            // $imageUpload->save();
                         }
+                        $imageUpload->access = $request->access;
                         $imageUpload->save();
                     }
-                    // $filename = date('YmdHi') . $file->getClientOriginalName();
                 }
             });
-            // return response()->json(['message' => $imageUpload,"lol"=>"lol"], 200);
 
             return response()->json([
-                // 'data' => $imagePath,
                 'message' => 'Successful'
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
-    // public function uploadPropertyDoc(Request $request)
-    // {
-    //     try {
-    //         DB::transaction(function () use ($request) {
-    //             if ($request->file('image')) {
-    //                 foreach ($request->file('image') as $file) {
-    //                     $imageUpload = new PropertyDocs();
-    //                     $originalFilename = $file->getClientOriginalName(); // Original filename
-    //                     $fileSize = $file->getSize();
-    //                     $imageUpload->company_id = auth('api')->user()->company_id;
-    //                     $path = config('app.asset_s') . '/Document';
-    //                     $filename_s3 = Storage::disk('s3')->put($path, $file);
 
-    //                     // Store the original file name in the database
-    //                     $imageUpload->name = $originalFilename;
-    //                     $imageUpload->doc_path = $filename_s3;
-    //                     $imageUpload->company_id = auth('api')->user()->company_id;
-    //                     $imageUpload->name = $filename_s3;
-    //                     $imageUpload->file_size = $fileSize;
+    public function updateDocumentAccess($id, Request $request)
+    {
+        $validated = $request->validate([
+            'access' => 'required|boolean'
+        ]);
 
-    //                     // Rest of your code...
+        try {
+            $document = PropertyDocs::findOrFail($id);
 
-    //                     $imageUpload->save();
-    //                 }
-    //             }
-    //         });
+            $document->access = $validated['access'];
+            $document->save();
 
-    //         return response()->json([
-    //             'message' => 'Successful'
-    //         ], 200);
-    //     } catch (\Exception $ex) {
-    //         return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
-    //     }
-    // }
-
-
-
+            return response()->json([
+                'message' => 'Access updated successfully',
+                'access' => $document->access
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update access',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function addPropertyMember(Request $request)
     {
@@ -1622,7 +1981,6 @@ class PropertiesController extends Controller
     public function rentals_ssr(Request $request)
     {
         try {
-            // return auth('api')->user()->company_id;
             $page_qty = $request->sizePerPage;
             $a = [];
             $propertyAll = 0;
@@ -1640,6 +1998,14 @@ class PropertiesController extends Controller
                     ->where('status', 'Active')
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->orWhereIn('id', $tenant_contacts)
                     ->orWhereIn('manager_id', $managers)
                     ->orWhereIn('id', $owner_contacts)
@@ -1652,6 +2018,14 @@ class PropertiesController extends Controller
                     ->where('status', '!=', 'Active')
                     ->where('id', 'LIKE', '%' . $request->q . '%')
                     ->orWhere('reference', 'LIKE', '%' . $request->q . '%')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
                     ->orWhereIn('id', $tenant_contacts)
                     ->orWhereIn('manager_id', $managers)
                     ->orWhereIn('id', $owner_contacts)
@@ -1660,9 +2034,20 @@ class PropertiesController extends Controller
                     ->get();
             } else {
 
-                $properties = Properties::where('company_id', auth('api')->user()->company_id)->select('id', 'reference', 'manager_id', 'owner_contact_id')->with('property_images', 'properties_level', 'currentOwner')
-                    ->where('status', 'Active')->offset($offset)->limit($page_qty)->get();
-                // return $properties;
+                $properties = Properties::where('company_id', auth('api')->user()->company_id)->select('id', 'reference', 'manager_id', 'owner_contact_id')
+                    ->with('property_images', 'properties_level', 'currentOwner')
+                    ->where('status', 'Active')
+                    ->when($request->manager, function ($query, $manager) {
+                        return $query->where('manager_id', $manager);
+                    })
+                    ->when($request->labels, function ($query, $labels) {
+                        $query->whereHas('properties_level', function ($q) use ($labels) {
+                            $q->whereRaw("FIND_IN_SET(?, labels)", [$labels]);
+                        });
+                    })
+                    ->offset($offset)->limit($page_qty)
+                    ->get();
+
                 $propertyAll = Properties::where('company_id', auth('api')->user()->company_id)->select('id', 'reference', 'manager_id')->with('properties_level')
                     ->where('status', 'Active')->get();
             }
@@ -1725,46 +2110,60 @@ class PropertiesController extends Controller
         }
     }
 
-
     public function ownerPanalShow($id)
     {
         try {
-            // return "hello";
             $properties = Properties::where('id', $id)
-                ->with('owner', 'owners', 'tenant', 'property_address', 'property_docs', 'all_property_docs', 'properties_level', 'salesAgreemet', 'property_type', 'property_images', 'reminder_property')
+                ->with([
+                    'owner',
+                    'owners',
+                    'tenant',
+                    'property_address',
+                    'property_docs' => function ($query) {
+                        $query->where('access', 1);
+                    },
+                    'all_property_docs',
+                    'properties_level',
+                    'salesAgreemet',
+                    'property_type',
+                    'property_images',
+                    'reminder_property'
+                ])
                 ->with('currentOwner', 'currentOwner.OwnerFees', 'currentOwner.ownerPropertyFees', 'currentOwner.ownerPayment', 'currentOwnerFolio')
                 ->withCount('reminder')->first();
 
             $ownerPendingBill = $properties->currentOwnerFolio;
-            $total_bills_amount = NULL;
+            $total_bills_amount = null;
 
             if (!empty($properties->currentOwnerFolio)) {
-                $total_bills_amount = OwnerFolio::where('id', $properties->owner_folio_id)->withSum('total_bills_amount', 'amount')->withSum('total_due_invoices', 'amount')->withSum('total_due_invoices', 'paid')->first();
+                $total_bills_amount = OwnerFolio::where('id', $properties->owner_folio_id)
+                    ->withSum('total_bills_amount', 'amount')
+                    ->withSum('total_due_invoices', 'amount')
+                    ->withSum('total_due_invoices', 'paid')
+                    ->first();
             }
+
             $property_address = $properties->property_address;
 
-            $ownerPlanAddon = OwnerPlanAddon::where('owner_folio_id', $properties->owner_folio_id)->where('company_id', auth('api')->user()->company_id)->with('plan')->get();
-            $ownerPlan = OwnerPlan::where('owner_id', $properties->owner_contact_id)->where('company_id', auth('api')->user()->company_id)->with('plan')->first();
-            $newplanname = '';
-            if ($ownerPlan) {
-                $newplanname = $ownerPlan->plan->name;
-            }
-            $planName = '';
-            $customPlan = false;
-            if (sizeof($ownerPlanAddon) > 0) {
-                foreach ($ownerPlanAddon as $value) {
-                    if ($value['optional_addon'] === 1) {
-                        $customPlan = true;
-                    }
-                }
-            }
-            $planName = $customPlan === true ?  $newplanname . ' (Custom)' : $newplanname;
+            $ownerPlanAddon = OwnerPlanAddon::where('owner_folio_id', $properties->owner_folio_id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->with('plan')->get();
+
+            $ownerPlan = OwnerPlan::where('owner_id', $properties->owner_contact_id)
+                ->where('company_id', auth('api')->user()->company_id)
+                ->with('plan')->first();
+
+            $newplanname = $ownerPlan ? $ownerPlan->plan->name : '';
+
+            $customPlan = $ownerPlanAddon->contains('optional_addon', 1);
+            $planName = $customPlan ? $newplanname . ' (Custom)' : $newplanname;
 
             $ownerFees = OwnerFees::where('owner_contact_id', $properties->owner_contact_id)->count();
             $ownerPropertyFees = OwnerPropertyFees::where('owner_contact_id', $properties->owner_contact_id)->count();
             $total_fees = $ownerFees + $ownerPropertyFees;
+
             $pending_invoice_bill = 0;
-            if (!empty($total_bills_amount)) {
+            if ($total_bills_amount) {
                 $pending_invoice_bill = $total_bills_amount->total_due_invoices_sum_amount - $total_bills_amount->total_due_invoices_sum_paid;
             }
 
@@ -1776,7 +2175,7 @@ class PropertiesController extends Controller
                 'total_fees' => $total_fees,
                 'total_bills_amount' => $total_bills_amount,
                 'pending_invoice_bill' => $pending_invoice_bill,
-                'message' => 'Successfull'
+                'message' => 'Successful'
             ]);
         } catch (\Throwable $th) {
             return response()->json([

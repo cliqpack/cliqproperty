@@ -28,9 +28,7 @@ use stdClass;
 
 class DocumentGenerateController extends Controller
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function generateBatchDocument($data)
     {
@@ -51,7 +49,8 @@ class DocumentGenerateController extends Controller
         $content = $pdf->download()->getOriginalContent();
         if (!empty($statementName)) {
             $filename = 'work_order-' . ($statementName->id + 1);
-        } else $filename = 'work_order-1';
+        } else
+            $filename = 'work_order-1';
 
         $path = config('app.asset_s') . '/Document' . '/' . $filename . '.pdf';
         $filename_s3 = Storage::disk('s3')->put($path, $pdf->output());
@@ -64,7 +63,7 @@ class DocumentGenerateController extends Controller
         $uploadDoc->inspection_id = NULL;
         $uploadDoc->task_id = NULL;
         $uploadDoc->generated = 'Generated';
-        $uploadDoc->company_id     = auth('api')->user()->company_id;
+        $uploadDoc->company_id = auth('api')->user()->company_id;
         $uploadDoc->save();
         // Storage::put('public/Document/' . $filename . '.pdf', $content);
     }
@@ -73,16 +72,22 @@ class DocumentGenerateController extends Controller
     {
         $pdf = PDF::loadView('accounts::invoicePdf', $data);
         $filename = 'invoice-' . $data['invoice_id'];
-        // $pdf->save(public_path('public/Document') . '/' . $filename . '.pdf');
         $path = config('app.asset_s') . '/Document' . '/' . date('YmdHi') . $filename . '.pdf';
         $filename_s3 = Storage::disk('s3')->put($path, $pdf->output());
         Invoices::where('id', $data['invoice_id'])->update(['doc_path' => $filename_s3 ? $path : null]);
+
+        // Return file details: path, name, and type
+        return [
+            'file_path' => $filename_s3 ? $path : null,
+            'file_name' => $filename,
+            'file_type' => '.pdf'
+        ];
     }
-    
+
     public function generateRentManagementDocument($data)
     {
         $pdf = PDF::loadView('accounts::rentManagementPdf', $data);
-        $filename = $data['tenant_folio'].'-RentInvoice000'.$data['rent_management_id'];
+        $filename = $data['tenant_folio'] . '-RentInvoice000' . $data['rent_management_id'];
         $path = config('app.asset_s') . '/Document' . '/' . date('YmdHi') . $filename . '.pdf';
         $filename_s3 = Storage::disk('s3')->put($path, $pdf->output());
         RentManagement::where('id', $data['rent_management_id'])->update(['recurring_doc' => $filename_s3 ? $path : null]);
@@ -90,16 +95,16 @@ class DocumentGenerateController extends Controller
 
     public function generateDisbursementDocument($data)
     {
-        $brandStatement = SettingBrandStatement::where('company_id',auth('api')->user()->company_id)->first();
-        $brandLogo = BrandSettingLogo::where('company_id',auth('api')->user()->company_id)->first();
-        $user = User::where('company_id',auth('api')->user()->company_id)->first();
-        $company = CompanySetting::where('company_id',auth('api')->user()->company_id)->first();
+        $brandStatement = SettingBrandStatement::where('company_id', auth('api')->user()->company_id)->first();
+        $brandLogo = BrandSettingLogo::where('company_id', auth('api')->user()->company_id)->first();
+        $user = User::where('company_id', auth('api')->user()->company_id)->first();
+        $company = CompanySetting::where('company_id', auth('api')->user()->company_id)->first();
         $data['brandStatement'] = $brandStatement;
         $data['brandLogo'] = $brandLogo;
         $data['user'] = $user;
         $data['company'] = $company;
 
-        $body = "You have received a disbursement from CliqProperty. Disbursement amount is $" . $data['payout']->amount . ".";
+        $body = "You have received a disbursement from MyDay. Disbursement amount is $" . $data['payout']->amount . ".";
         $statementName = PropertyDocs::latest()->first();
         $dompdf = new Dompdf();
         $options = new Options();
@@ -112,13 +117,11 @@ class DocumentGenerateController extends Controller
         $ownerEmail = $data['to'];
         $language = User::where('email', $ownerEmail)->pluck('language_code')->first();
         if ($language !== null) {
-            if($language ==='en'){
+            if ($language === 'en') {
                 $html = view('accounts::receiptPdf', $data)->render();
-
-            }elseif($language ==='cn'){
+            } elseif ($language === 'cn') {
                 $html = view('accounts::receiptPdfMandarin', $data)->render();
-            }
-            else{
+            } else {
                 $html = view('accounts::receiptPdf', $data)->render();
             }
         } else {
@@ -129,7 +132,8 @@ class DocumentGenerateController extends Controller
 
         if (!empty($statementName)) {
             $filename = 'Statement-' . ($statementName->id + 1);
-        } else $filename = 'Statement-1';
+        } else
+            $filename = 'Statement-1';
         // $pdf->save(public_path('public/Document') . '/' . $filename . '.pdf');
         $path = config('app.asset_s') . '/Document' . '/' . date('YmdHi') . $filename . '.pdf';
         $filename_s3 = Storage::disk('s3')->put($path, $html);
@@ -141,7 +145,7 @@ class DocumentGenerateController extends Controller
         $uploadDoc->generated = 'Generated';
         $uploadDoc->contact_id = $data['owner_contacts']['contact_id'];
         $uploadDoc->owner_id = $data['owner_contacts']['id'];
-        $uploadDoc->company_id     = auth('api')->user()->company_id;
+        $uploadDoc->company_id = auth('api')->user()->company_id;
 
         $uploadDoc->save();
 
@@ -178,29 +182,30 @@ class DocumentGenerateController extends Controller
 
     public function generateDisbursementPreview($data)
     {
-        $brandStatement = SettingBrandStatement::where('company_id',auth('api')->user()->company_id)->first();
-        $brandLogo = BrandSettingLogo::where('company_id',auth('api')->user()->company_id)->first();
-        $user = User::where('company_id',auth('api')->user()->company_id)->first();
-        $company = CompanySetting::where('company_id',auth('api')->user()->company_id)->first();
+        $brandStatement = SettingBrandStatement::where('company_id', auth('api')->user()->company_id)->first();
+        $brandLogo = BrandSettingLogo::where('company_id', auth('api')->user()->company_id)->first();
+        $user = User::where('company_id', auth('api')->user()->company_id)->first();
+        $company = CompanySetting::where('company_id', auth('api')->user()->company_id)->first();
         $data['brandStatement'] = $brandStatement;
         $data['brandLogo'] = $brandLogo;
         $data['user'] = $user;
         $data['company'] = $company;
         // return $data;
         $statementName = PropertyDocs::latest()->first();
-        $pdf = PDF::loadView('accounts::receiptPreviewPdf',  $data);
+        $pdf = PDF::loadView('accounts::receiptPreviewPdf', $data);
         // return $pdf;
         $content = $pdf->download()->getOriginalContent();
         if (!empty($statementName)) {
             $filename = 'Statement-' . ($statementName->id + 1);
-        } else $filename = 'Statement-1';
+        } else
+            $filename = 'Statement-1';
         return $pdf->download($filename . '.pdf');
     }
 
     public function generateBill($data)
     {
 
-        $bill =  DB::transaction(function () use ($data) {
+        $bill = DB::transaction(function () use ($data) {
             // return $data;
             $body = "This is an email to remind you that a bill of $" . $data['amount'] . " has been generated in your name and the bill will be deducted in the next disbursement";
             $pdf = PDF::loadView('accounts::billPdf', $data);
@@ -275,5 +280,12 @@ class DocumentGenerateController extends Controller
         $receipt->totalTaxAmount = $totalTaxAmount;
         $receipt->doc_path = $path;
         $receipt->save();
+
+        // Return file details: path, name, and type
+        return [
+            'file_path' =>  $path,
+            'file_name' => "receipt",
+            'file_type' => '.pdf'
+        ];
     }
 }

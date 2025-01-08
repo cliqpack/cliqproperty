@@ -11,7 +11,7 @@ class PropertySalesAgreement extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = ['has_buyer','buyer_id'];
 
     protected static function newFactory()
     {

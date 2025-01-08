@@ -7,21 +7,15 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Modules\Contacts\Entities\OwnerContact;
-use Modules\Contacts\Entities\TenantContact;
 use Modules\Inspection\Entities\EntryExitDescription;
 use Modules\Inspection\Entities\Inspection;
 use Modules\Inspection\Entities\InspectionDetailImage;
 use Modules\Inspection\Entities\InspectionDetails;
 use Modules\Inspection\Entities\InspectionRoutineOverview;
-use Modules\Messages\Entities\MessageWithMail;
 use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 use Modules\Properties\Entities\Properties;
-use Modules\Properties\Entities\PropertyActivity;
-use Modules\Properties\Entities\PropertyActivityEmail;
 use Modules\Properties\Entities\PropertyRoom;
-use Prophecy\Promise\ReturnPromise;
+use Log;
 
 class InspectionDetailsController extends Controller
 {
@@ -58,18 +52,17 @@ class InspectionDetailsController extends Controller
             $detailData = '';
             DB::transaction(function () use ($request, &$desc, &$detailData) {
                 $inspection_routine_overview = new InspectionRoutineOverview();
-                $inspection_routine_overview->property_id    = $request->property_id;
-                $inspection_routine_overview->inspection_id      = $request->inspection_id;
-                $inspection_routine_overview->share_with_owner   = $request->share_with_owner;
-                $inspection_routine_overview->share_with_tenant  = $request->share_with_tenant;
+                $inspection_routine_overview->property_id = $request->property_id;
+                $inspection_routine_overview->inspection_id = $request->inspection_id;
+                $inspection_routine_overview->share_with_owner = $request->share_with_owner;
+                $inspection_routine_overview->share_with_tenant = $request->share_with_tenant;
                 $inspection_routine_overview->rent_review = $request->rent_review ? $request->rent_review : null;
                 $inspection_routine_overview->water_meter_reading = $request->water_meter_reading ? $request->water_meter_reading : null;
                 $inspection_routine_overview->general_notes = $request->general_notes ? $request->general_notes : null;
-                $inspection_routine_overview->follow_up_actions    = $request->follow_up_actions ? $request->follow_up_actions : null;
+                $inspection_routine_overview->follow_up_actions = $request->follow_up_actions ? $request->follow_up_actions : null;
                 $inspection_routine_overview->save();
 
                 foreach ($request->property as $key => $property) {
-
                     foreach ($property["name"]["attribute"] as $attr) {
                         $ins = new InspectionDetails();
                         $check = $ins->where('inspection_id', $property["name"]["inspection_id"])->where('property_id', $property["name"]["property_id"])->where('room_id', $property["name"]["room_id"])->where('room_attributes', $attr["attr1"]);
@@ -111,72 +104,47 @@ class InspectionDetailsController extends Controller
                     }
 
                     $property = Properties::where('id', $request->property_id)->first();
-
-                    $po = $property->owner_id != null ? $property->owner_id : null;
-                    $pt = $property->tenant_id != null ? $property->tenant_id : null;
-
-                    $owner = OwnerContact::where('id', $po)->first();
-                    $tenant = TenantContact::where('id', $pt)->first();
-
-
-                    // $inspectionActivity_email = new PropertyActivity();
-                    // $inspectionActivity_email->property_id = $request->propID;
-                    // $property = Properties::where('id', $request->property_id)->first();
-                    // $po = $property->owner_id != null ? $property->owner_id : null;
-                    // $pt = $property->tenant_id != null ? $property->tenant_id : null;
-
-                    // $owner = OwnerContact::where('id', $po)->first();
-                    // $tenant = TenantContact::where('id', $pt)->first();
-
-
-                    // $inspectionActivity_email = new PropertyActivity();
-                    // $inspectionActivity_email->property_id = $propertyID;
-                    // $inspectionActivity_email->owner_contact_id = $owner ? $owner->id : null;
-                    // $inspectionActivity_email->tenant_contact_id = $tenant ? $tenant->id : null;
-                    // $inspectionActivity_email->inspection_id = $request->insID;
-                    // $inspectionActivity_email->type = 'email';
-                    // $inspectionActivity_email->status = 'Pending';
-                    // $inspectionActivity_email->save();
-
-                    // $inspectionActivity_email_template = new PropertyActivityEmail();
-                    // $inspectionActivity_email_template->email_to = $owner ? $owner->email : "no_owner_email@mail.com";
-                    // $inspectionActivity_email_template->email_from = "no-reply@myday.com";
-                    // $inspectionActivity_email_template->subject = "Owner Inspection Complete report";
-                    // $inspectionActivity_email_template->email_body = "Hello " . ($owner ? $owner->first_name : null) . " " . ($owner ? $owner->last_name : null) . ", your property inspected and report completed";
-                    // $inspectionActivity_email_template->email_status = "pending";
-                    // $inspectionActivity_email_template->property_activity_id = $inspectionActivity_email->id;
-                    // $inspectionActivity_email_template->save();
-
-                    // $messageWithMail = new MessageWithMail();
-
-                    // $messageWithMail->property_id   = $request->propID;
-                    // $messageWithMail->to            = $owner ? $owner->email : "no_owner_email@mail.com";
-                    // $messageWithMail->from          = "no-reply@myday.com";
-                    // $messageWithMail->subject       = "Owner Inspection Complete report";
-                    // $messageWithMail->body          = "Hello " . ($owner ? $owner->first_name : null) . " " . ($owner ? $owner->last_name : null) . ", your property inspected and report completed";
-                    // $messageWithMail->status        = "Outbox";
-                    // $messageWithMail->save();
-
-                    // $inspectionActivity_email_template = new PropertyActivityEmail();
-                    // $inspectionActivity_email_template->email_to = $tenant ? $tenant->email : "no_tenant_email@mail.com";
-                    // $inspectionActivity_email_template->email_from = "myday";
-                    // $inspectionActivity_email_template->subject = "Tenant Inspection Complete report";
-                    // $inspectionActivity_email_template->email_body = "Hello " . ($tenant ? $tenant->first_name : null) . " " . ($tenant ? $tenant->last_name : null) . ", your property inspected and report completed";
-                    // $inspectionActivity_email_template->email_status = "pending";
-                    // $inspectionActivity_email_template->property_activity_id = $inspectionActivity_email->id;
-                    // $inspectionActivity_email_template->save();
-
-                    // $messageWithMail->property_id = $request->property_id;
-                    // $messageWithMail->to       = $tenant ? $tenant->email : "no_tenant_email@mail.com";
-                    // $messageWithMail->from     = "no-reply@myday.com";
-                    // $messageWithMail->subject  = "Tenant Inspection Complete report";
-                    // $messageWithMail->body     = "Hello " . ($tenant ? $tenant->first_name : null) . " " . ($tenant ? $tenant->last_name : null) . ", your property inspected and report completed";
-                    // $messageWithMail->status   = "Outbox";
-                    // $messageWithMail->save();
                 }
 
                 $desc = EntryExitDescription::where('property_id', $request->property_id)->where('inspection_id', $request->inspection_id)->get();
                 $detailData = InspectionDetails::where('inspection_id', $request->inspection_id)->get();
+
+                $inspection = Inspection::find($request->inspection_id);
+
+                /* Start: Setup and trigger activity message */
+                if ($request->share_with_owner) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
+
+                    $messsage_trigger_point = "Shared with owner";
+                    $data = [
+                        "property_id" => $request->property_id,
+                        "id" => $request->inspection_id
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                if ($request->share_with_tanent) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
+
+                    $messsage_trigger_point = "Shared with tenant";
+                    $data = [
+                        "property_id" => $request->property_id,
+                        "id" => $request->inspection_id
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                /* End: Setup and trigger activity message */
             });
             return response()->json([
                 'description' => $desc,
@@ -193,14 +161,14 @@ class InspectionDetailsController extends Controller
     {
         try {
             $inspection_routine_overview = new InspectionRoutineOverview();
-            $inspection_routine_overview->property_id    = $request->property_id;
-            $inspection_routine_overview->inspection_id      = $request->inspection_id;
-            $inspection_routine_overview->share_with_owner   = $request->share_with_owner;
-            $inspection_routine_overview->share_with_tenant  = $request->share_with_tenant ? $request->share_with_tenant : null;
+            $inspection_routine_overview->property_id = $request->property_id;
+            $inspection_routine_overview->inspection_id = $request->inspection_id;
+            $inspection_routine_overview->share_with_owner = $request->share_with_owner;
+            $inspection_routine_overview->share_with_tenant = $request->share_with_tenant ? $request->share_with_tenant : null;
             $inspection_routine_overview->rent_review = $request->rent_review ? $request->rent_review : null;
             $inspection_routine_overview->water_meter_reading = $request->water_meter_reading ? $request->water_meter_reading : null;
             $inspection_routine_overview->general_notes = $request->general_notes ? $request->general_notes : null;
-            $inspection_routine_overview->follow_up_actions    = $request->follow_up_actions ? $request->follow_up_actions : null;
+            $inspection_routine_overview->follow_up_actions = $request->follow_up_actions ? $request->follow_up_actions : null;
             $inspection_routine_overview->save();
 
 
@@ -217,14 +185,14 @@ class InspectionDetailsController extends Controller
     {
         try {
             $inspection_routine_overview = InspectionRoutineOverview::where('inspection_id', $insId)->where('property_id', $propsId)->update([
-                "property_id"        => $propsId,
-                "inspection_id"      => $insId,
-                "share_with_owner"   => $request->share_with_owner ? $request->share_with_owner : null,
-                "share_with_tenant"  => $request->share_with_tenant ? $request->share_with_tenant : null,
-                "rent_review"        => $request->rent_review ? $request->rent_review : null,
+                "property_id" => $propsId,
+                "inspection_id" => $insId,
+                "share_with_owner" => $request->share_with_owner ? $request->share_with_owner : null,
+                "share_with_tenant" => $request->share_with_tenant ? $request->share_with_tenant : null,
+                "rent_review" => $request->rent_review ? $request->rent_review : null,
                 "water_meter_reading" => $request->water_meter_reading ? $request->water_meter_reading : null,
                 "general_notes" => $request->general_notes ? $request->general_notes : null,
-                "follow_up_actions"    => $request->follow_up_actions ? $request->follow_up_actions : null,
+                "follow_up_actions" => $request->follow_up_actions ? $request->follow_up_actions : null,
             ]);
 
             return response()->json([
@@ -256,14 +224,14 @@ class InspectionDetailsController extends Controller
                 $get_ins = InspectionRoutineOverview::where('inspection_id', $property["inspection_id"])->get();
                 if (count($get_ins) == 0) {
                     $inspection_routine_overview = new InspectionRoutineOverview();
-                    $inspection_routine_overview->property_id    = $property["property_id"];
-                    $inspection_routine_overview->inspection_id      = $property["inspection_id"];
-                    $inspection_routine_overview->share_with_owner   = null;
-                    $inspection_routine_overview->share_with_tenant  = null;
+                    $inspection_routine_overview->property_id = $property["property_id"];
+                    $inspection_routine_overview->inspection_id = $property["inspection_id"];
+                    $inspection_routine_overview->share_with_owner = null;
+                    $inspection_routine_overview->share_with_tenant = null;
                     $inspection_routine_overview->rent_review = null;
                     $inspection_routine_overview->water_meter_reading = null;
                     $inspection_routine_overview->general_notes = null;
-                    $inspection_routine_overview->follow_up_actions    = null;
+                    $inspection_routine_overview->follow_up_actions = null;
                     $inspection_routine_overview->save();
                 }
 
@@ -275,7 +243,7 @@ class InspectionDetailsController extends Controller
                         $ins = new InspectionDetails();
                         $ins->inspection_id = $property["inspection_id"];
                         $ins->property_id = $property["property_id"];
-                        $ins->room_id     = $rooms->id;
+                        $ins->room_id = $rooms->id;
                         $ins->room_attributes = $attr->field;
                         $ins->save();
                     }
@@ -337,7 +305,7 @@ class InspectionDetailsController extends Controller
                         $ins = new InspectionDetails();
                         $ins->inspection_id = $insId;
                         $ins->property_id = $proId;
-                        $ins->room_id     = $rooms->id;
+                        $ins->room_id = $rooms->id;
                         $ins->room_attributes = $attr->field;
                         $ins->save();
                     }
@@ -473,7 +441,7 @@ class InspectionDetailsController extends Controller
                 foreach ($request->property as $key => $property) {
 
                     foreach ($property["name"]["attribute"] as $attr) {
-                        $ins =  InspectionDetails::where("inspection_id", $insId)->where("property_id", $property["name"]["property_id"])->where("room_id", $property["name"]["room_id"])->where('room_attributes', $attr["attr1"]);
+                        $ins = InspectionDetails::where("inspection_id", $insId)->where("property_id", $property["name"]["property_id"])->where("room_id", $property["name"]["room_id"])->where('room_attributes', $attr["attr1"]);
                         $insInfo = $ins->get();
                         if (count($insInfo) == 0) {
                             $ins1 = new InspectionDetails();
@@ -487,8 +455,7 @@ class InspectionDetailsController extends Controller
                             $ins1->comment = $attr["comment"];
                             $ins1->save();
                         } else {
-                            $ins1 =  InspectionDetails::where("inspection_id", $insId)->where("property_id", $property["name"]["property_id"])->where("room_id", $property["name"]["room_id"])->where('room_attributes', $attr["attr1"])->update([
-                                // "room_attributes" => $attr["attr1"],
+                            $ins1 = InspectionDetails::where("inspection_id", $insId)->where("property_id", $property["name"]["property_id"])->where("room_id", $property["name"]["room_id"])->where('room_attributes', $attr["attr1"])->update([
                                 "clean" => $attr["clean"],
                                 "undamaged" => $attr["undamaged"],
                                 "working" => $attr["working"],
@@ -512,18 +479,55 @@ class InspectionDetailsController extends Controller
                     }
                 }
                 $inspection_routine_overview = InspectionRoutineOverview::where('inspection_id', $insId)->update([
-                    "property_id"        => $propsId,
-                    "inspection_id"      => $insId,
-                    "share_with_owner"   => $request->share_with_owner ? $request->share_with_owner : null,
-                    "share_with_tenant"  => $request->share_with_tanent ? $request->share_with_tanent : null,
-                    "rent_review"        => $request->rent_review ? $request->rent_review : null,
+                    "property_id" => $propsId,
+                    "inspection_id" => $insId,
+                    "share_with_owner" => $request->share_with_owner ? $request->share_with_owner : null,
+                    "share_with_tenant" => $request->share_with_tanent ? $request->share_with_tanent : null,
+                    "rent_review" => $request->rent_review ? $request->rent_review : null,
                     "water_meter_reading" => $request->water_meter_reading ? $request->water_meter_reading : null,
                     "general_notes" => $request->general_notes ? $request->general_notes : null,
-                    "follow_up_actions"    => $request->follow_up_actions ? $request->follow_up_actions : null,
+                    "follow_up_actions" => $request->follow_up_actions ? $request->follow_up_actions : null,
                 ]);
 
                 $desc = EntryExitDescription::where('property_id', $request->property_id)->where('inspection_id', $request->inspection_id)->get();
                 $detailData = InspectionDetails::where('inspection_id', $request->inspection_id)->get();
+                $inspection = Inspection::find($insId);
+
+                /* Start: Setup and trigger activity message */
+                if ($request->share_with_owner) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
+
+                    $messsage_trigger_point = "Shared with owner";
+                    $data = [
+                        "property_id" => $propsId,
+                        "id" => $insId
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                if ($request->share_with_tanent) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
+
+                    $messsage_trigger_point = "Shared with tenant";
+                    $data = [
+                        "property_id" => $propsId,
+                        "id" => $insId
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                /* End: Setup and trigger activity message */
+
             });
 
             return response()->json([
@@ -613,14 +617,14 @@ class InspectionDetailsController extends Controller
             $get_ins = InspectionRoutineOverview::where('inspection_id', $request->inspection_id)->get();
             if (count($get_ins) == 0) {
                 $inspection_routine_overview = new InspectionRoutineOverview();
-                $inspection_routine_overview->property_id    = $request->property_id;
-                $inspection_routine_overview->inspection_id      = $request->inspection_id;
-                $inspection_routine_overview->share_with_owner   = null;
-                $inspection_routine_overview->share_with_tenant  = null;
+                $inspection_routine_overview->property_id = $request->property_id;
+                $inspection_routine_overview->inspection_id = $request->inspection_id;
+                $inspection_routine_overview->share_with_owner = null;
+                $inspection_routine_overview->share_with_tenant = null;
                 $inspection_routine_overview->rent_review = null;
                 $inspection_routine_overview->water_meter_reading = null;
                 $inspection_routine_overview->general_notes = null;
-                $inspection_routine_overview->follow_up_actions    = null;
+                $inspection_routine_overview->follow_up_actions = null;
                 $inspection_routine_overview->save();
             }
 
@@ -670,24 +674,16 @@ class InspectionDetailsController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 $inspection_routine_overview = new InspectionRoutineOverview();
-                $inspection_routine_overview->property_id         = $request->propID;
-                $inspection_routine_overview->inspection_id       = $request->insID;
-                $inspection_routine_overview->share_with_owner    = $request->switch1;
-                $inspection_routine_overview->share_with_tenant   = $request->switch2;
-                $inspection_routine_overview->rent_review         = $request->rent;
+                $inspection_routine_overview->property_id = $request->propID;
+                $inspection_routine_overview->inspection_id = $request->insID;
+                $inspection_routine_overview->share_with_owner = $request->switch1;
+                $inspection_routine_overview->share_with_tenant = $request->switch2;
+                $inspection_routine_overview->rent_review = $request->rent;
                 $inspection_routine_overview->water_meter_reading = $request->waterMeter;
-                $inspection_routine_overview->general_notes       = $request->notes;
-                $inspection_routine_overview->follow_up_actions   = $request->followUp;
+                $inspection_routine_overview->general_notes = $request->notes;
+                $inspection_routine_overview->follow_up_actions = $request->followUp;
                 $inspection_routine_overview->save();
                 foreach ($request->property as $property) {
-                    // $attributeNames = array(
-                    //     'inspection_id' => $property["inspection_id"],
-                    //     'property_id' => $property["property_id"],
-                    //     'room_id' => $property["room_id"],
-                    //     'routine_description' => isset(
-                    //         $property["routine_description"]
-                    //     ) ? $property["routine_description"] : null,
-                    // );
                     $inspectionDetails = new InspectionDetails();
                     $check = $inspectionDetails->where('inspection_id', $property["inspection_id"])->where('property_id', $property["property_id"])->where('room_id', $property["room_id"]);
                     $checkDetails = $check->get();
@@ -703,89 +699,51 @@ class InspectionDetailsController extends Controller
                         ]);
                     }
                 }
-
                 $property = Properties::where('id', $request->propID)->first();
-                $po = $property->owner_id != null ? $property->owner_id : null;
-                $pt = $property->tenant_id != null ? $property->tenant_id : null;
-                $owner = OwnerContact::where('id', $po)->first();
-                $tenant = TenantContact::where('id', $pt)->first();
-
-                // $inspectionActivity_email = new PropertyActivity();
-                // $inspectionActivity_email->property_id = $request->propID;
-                // $inspectionActivity_email->owner_contact_id = $owner ? $owner->id : null;
-                // $inspectionActivity_email->tenant_contact_id = $tenant ? $tenant->id : null;
-                // $inspectionActivity_email->inspection_id = $request->insID;
-                // $inspectionActivity_email->type = 'email';
-                // $inspectionActivity_email->status = 'Pending';
-                // $inspectionActivity_email->save();
-
-                // $inspectionActivity_email_template = new PropertyActivityEmail();
-                // $inspectionActivity_email_template->email_to = $owner ? $owner->email : "no_owner_email@mail.com";
-                // $inspectionActivity_email_template->email_from = "no-reply@myday.com";
-                // $inspectionActivity_email_template->subject = "Owner Inspection Complete report";
-                // $inspectionActivity_email_template->email_body = "Hello " . ($owner ? $owner->first_name : null) . " " . ($owner ? $owner->last_name : null) . ", your property inspected and report completed";
-                // $inspectionActivity_email_template->email_status = "pending";
-                // $inspectionActivity_email_template->property_activity_id = $inspectionActivity_email->id;
-                // $inspectionActivity_email_template->save();
-
-                $message_action_name = "Inspections All";
-                // $message_trigger_to = 'Owner';
-                $messsage_trigger_point = 'Inspection';
-                $data = [
-                    "property_id" => $request->property,
-
-                    "status" => 'Pending'
-
-                ];
-                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name,"", $messsage_trigger_point, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
-
-                // $messageWithMail = new MessageWithMail();
-
-                // $messageWithMail->property_id = $request->propID;
-                // $messageWithMail->to       = $owner ? $owner->email : "no_owner_email@mail.com";
-                // $messageWithMail->from     = "no-reply@myday.com";
-                // $messageWithMail->subject  = "Owner Inspection Complete report";
-                // $messageWithMail->body     = "Hello " . ($owner ? $owner->first_name : null) . " " . ($owner ? $owner->last_name : null) . ", your property inspected and report completed";
-                // $messageWithMail->status   = "Outbox";
-                // $messageWithMail->save();
-
-                // $inspectionActivity_email_template = new PropertyActivityEmail();
-                // $inspectionActivity_email_template->email_to = $tenant ? $tenant->email : "no_tenant_email@mail.com";
-                // $inspectionActivity_email_template->email_from = "myday";
-                // $inspectionActivity_email_template->subject = "Tenant Inspection Complete report";
-                // $inspectionActivity_email_template->email_body = "Hello " . ($tenant ? $tenant->first_name : null) . " " . ($tenant ? $tenant->last_name : null) . ", your property inspected and report completed";
-                // $inspectionActivity_email_template->email_status = "pending";
-                // $inspectionActivity_email_template->property_activity_id = $inspectionActivity_email->id;
-                // $inspectionActivity_email_template->save();
-
-                // $messageWithMail->property_id = $request->property_id;
-                // $messageWithMail->to       = $tenant ? $tenant->email : "no_tenant_email@mail.com";
-                // $messageWithMail->from     = "no-reply@myday.com";
-                // $messageWithMail->subject  = "Tenant Inspection Complete report";
-                // $messageWithMail->body     = "Hello " . ($tenant ? $tenant->first_name : null) . " " . ($tenant ? $tenant->last_name : null) . ", your property inspected and report completed";
-                // $messageWithMail->status   = "Outbox";
-                // $messageWithMail->save();
+                $inspection = Inspection::find($request->insID);
 
 
-                $message_action_name = "Inspections All";
-                // $message_trigger_to = 'Tenant';
-                $messsage_trigger_point = 'Inspection';
-                $data = [
-                    "property_id" => $request->property,
+                /* Start: Setup and trigger activity message */
+                if ($request->switch1) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
 
-                    "status" => 'Pending'
+                    $messsage_trigger_point = "Shared with owner";
+                    $data = [
+                        "property_id" => $request->propID,
+                        "id" => $request->insID
+                    ];
 
-                ];
-                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name,"", $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                if ($request->switch2) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
 
-                $value = $activityMessageTrigger->trigger();
+                    $messsage_trigger_point = "Shared with tenant";
+                    $data = [
+                        "property_id" => $request->propID,
+                        "id" => $request->insID
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                /* End: Setup and trigger activity message */
+
+
             });
 
             return response()->json([
                 'message' => 'Successful',
-                'status'  => "Success",
+                'status' => "Success",
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -796,26 +754,59 @@ class InspectionDetailsController extends Controller
     {
 
         try {
-            // $routineInspectionDetail = InspectionDetails::where('inspection_id', $id);
-            // $routineInspectionDetails = $routineInspectionDetail->get();
-
             foreach ($request->property as $key => $inspection) {
                 if (isset($inspection["routine_description"])) {
                     $routineInspectionDetail = InspectionDetails::where('inspection_id', $id)->where('room_id', $inspection["room_id"])->update([
                         'routine_description' => $inspection["routine_description"],
                     ]);
                 }
-                // $routineInspectionDetails[$key]->routine_description = $request->property[$key]["routine_description"];
-                // $routineInspectionDetails[$key]->save();
             }
             $inspection_routine_overview = InspectionRoutineOverview::where('inspection_id', $request->inspectionId)->first();
-            $inspection_routine_overview->share_with_owner   = $request->switch1;
-            $inspection_routine_overview->share_with_tenant  = $request->switch2;
+            $inspection_routine_overview->share_with_owner = $request->switch1;
+            $inspection_routine_overview->share_with_tenant = $request->switch2;
             $inspection_routine_overview->rent_review = $request->rent;
             $inspection_routine_overview->water_meter_reading = $request->waterMeter;
             $inspection_routine_overview->general_notes = $request->notes;
-            $inspection_routine_overview->follow_up_actions    = $request->followUp;
+            $inspection_routine_overview->follow_up_actions = $request->followUp;
             $inspection_routine_overview->save();
+
+            $inspection = Inspection::find($request->inspectionId);
+            
+            /* Start: Setup and trigger activity message */
+            if ($request->switch1) {
+                if ($inspection->inspection_type === 'Routine') {
+                    $message_action_name = "Inspections Routine";
+                } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                    $message_action_name = "Inspections All";
+                }
+
+                $messsage_trigger_point = "Shared with owner";
+                $data = [
+                    "property_id" => $request->propID,
+                    "id" => $request->inspectionId
+                ];
+
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
+            }
+            if ($request->switch2) {
+                if ($inspection->inspection_type === 'Routine') {
+                    $message_action_name = "Inspections Routine";
+                } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                    $message_action_name = "Inspections All";
+                }
+
+                $messsage_trigger_point = "Shared with tenant";
+                $data = [
+                    "property_id" => $request->propID,
+                    "id" => $request->inspectionId
+                ];
+
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
+            }
+            /* End: Setup and trigger activity message */
+
             return response()->json([
                 'message' => 'Successful',
                 'status' => "Success",
@@ -844,9 +835,9 @@ class InspectionDetailsController extends Controller
 
             $data = $this->getroutineimageIn($request->property_id, $request->inspection_id, $request->room_id);
             return response()->json([
-                'data'    => ["data" => $data],
+                'data' => ["data" => $data],
                 'message' => 'Successful',
-                'status'  => "Success",
+                'status' => "Success",
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -881,7 +872,7 @@ class InspectionDetailsController extends Controller
             });
 
             return response()->json([
-                'room_id'=>$request->room_id,
+                'room_id' => $request->room_id,
                 'message' => 'Successful'
             ], 200);
         } catch (\Exception $ex) {
@@ -914,9 +905,9 @@ class InspectionDetailsController extends Controller
             $desc = EntryExitDescription::where('property_id', $propId)->where('inspection_id', $insId)->get();
 
             return response()->json([
-                'data'    => $desc,
+                'data' => $desc,
                 'message' => 'Successful',
-                'status'  => "Success",
+                'status' => "Success",
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -928,11 +919,14 @@ class InspectionDetailsController extends Controller
         try {
             $inspection = Inspection::where('id', $id)->with('inspection_routine_overview')->first();
 
-            $details = PropertyRoom::with(['inspectinDetails.room_image' => function ($q) use ($id) {
-                $q->where('inspection_id', $id);
-            }, 'inspectinDetails' => function ($q) use ($id) {
-                $q->where('inspection_id', $id);
-            }])->where('property_id', $inspection->property_id)->get();
+            $details = PropertyRoom::with([
+                'inspectinDetails.room_image' => function ($q) use ($id) {
+                    $q->where('inspection_id', $id);
+                },
+                'inspectinDetails' => function ($q) use ($id) {
+                    $q->where('inspection_id', $id);
+                }
+            ])->where('property_id', $inspection->property_id)->get();
             // $details = InspectionDetails::with('room', 'room_image')->where('inspection_id', $id)->get();
             return response()->json([
                 'data' => $details,

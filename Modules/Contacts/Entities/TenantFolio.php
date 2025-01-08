@@ -20,23 +20,9 @@ class TenantFolio extends Model
         'property_id',
         'rent',
         'rent_type',
-        // 'rent_includes_tax',
-        // 'bond_required',
-        // 'bond_held',
         'move_in',
-        // 'move_out',
         'agreement_start',
-        // 'agreement_end',
-        // 'periodic_tenancy',
         'paid_to',
-        // 'part_paid',
-        // 'invoice_days_in_advance',
-        // 'rent_review_frequency',
-        // 'next_rent_review',
-        // 'exclude_form_arreas',
-        // 'bank_reterence',
-        // 'receipt_warning',
-        // 'tenant_access',
     ];
 
     protected $appends = ['rent_arrers'];
@@ -86,18 +72,18 @@ class TenantFolio extends Model
         $days = $paidToDate->diffInDays($today);
 
         if ($this->rent_type == "Weekly") {
-            $rent_due =(floatval($this->rent) / 7) * floatval($days) -floatval($this->part_paid);
-            return ["rent_due"=>$rent_due,"days"=>$days];
-          } else if ($this->rent_type == "FortNightly") {
-            $rent_due =(floatval($this->rent) / 14) * floatval($days) - floatval($this->part_paid);
-            return ["rent_due"=>$rent_due,"days"=>$days];
-          } else if ($this->rent_type == "Monthly") {
-            $ex_date=$days;
+            $rent_due = (floatval($this->rent) / 7) * floatval($days) - floatval($this->part_paid);
+            return ["rent_due" => $rent_due, "days" => $days];
+        } else if ($this->rent_type == "FortNightly") {
+            $rent_due = (floatval($this->rent) / 14) * floatval($days) - floatval($this->part_paid);
+            return ["rent_due" => $rent_due, "days" => $days];
+        } else if ($this->rent_type == "Monthly") {
+            $ex_date = $days;
             $month = floor(floatval($days) / 30);
             $days = floatval($days) % 30;
-            $rent_due =floatval($this->rent) * $month +((floatval($this->rent) * 12) / 365) * floatval($days) -floatval($this->part_paid);
-            return ["rent_due"=>$rent_due,"days"=>$ex_date];
-          }
+            $rent_due = floatval($this->rent) * $month + ((floatval($this->rent) * 12) / 365) * floatval($days) - floatval($this->part_paid);
+            return ["rent_due" => $rent_due, "days" => $ex_date];
+        }
     }
 
     public function tenantDueInvoice()

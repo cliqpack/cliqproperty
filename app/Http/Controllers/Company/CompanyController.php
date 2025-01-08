@@ -21,6 +21,9 @@ use Modules\Settings\Entities\Country;
 use Modules\Settings\Entities\MessagePortfolioEmailSetting;
 use Modules\Settings\Entities\MessageSetting;
 use Modules\Settings\Entities\Region;
+use Modules\Messages\Entities\MessageActionName;
+use Modules\Messages\Entities\MessageActionTriggerPoint;
+use Modules\Messages\Entities\MessageActionTriggerTo;
 
 class CompanyController extends Controller
 {
@@ -83,7 +86,7 @@ class CompanyController extends Controller
             "name" => "Bond Claim - General Repairs Maintenance",
             "code" => 300,
             "type" => "Income",
-            "des" =>        "",
+            "des" => "",
             "tax" => true,
             "hidden" => false,
         ],
@@ -132,7 +135,6 @@ class CompanyController extends Controller
             "tax" => true,
             "hidden" => false,
         ],
-
         [
             "name" => "Electrical",
             "code" => 450,
@@ -534,6 +536,174 @@ class CompanyController extends Controller
         ]
     ];
 
+    public $names = [
+        "Contact",
+        "Inspections All",
+        "Inspections Routine",
+        "Job",
+        "Key Management",
+        "Lease Renewal",
+        "Messages",
+        "Owner Contact",
+        "Reminders - Property",
+        "Rental Listing",
+        "Sale Listing",
+        "Sales Agreement",
+        "Task",
+        "Tenancy",
+        "Tenant Invoice",
+        "Tenant Receipt",
+        "Tenant Rent Invoice",
+        "Tenant Statement",
+        "Folio Receipt",
+        "Owner Financial Activity",
+        "Owner Statement",
+        "Supplier Statement"
+    ];
+
+    public $defaultTriggerPoints = [
+        'Contact' => ['Manual'],
+        'Inspections All' => [
+            'Manual',
+            'Scheduled',
+            'Rescheduled',
+            'Shared with owner',
+            'Shared with tenant',
+            'Assigned to tenant',
+            'Returned by tenant',
+            'Closed'
+        ],
+        'Inspections Routine' => [
+            'Manual',
+            'Scheduled',
+            'Rescheduled',
+            'Shared with owner',
+            'Shared with tenant',
+            'Closed'
+        ],
+        'Job' => [
+            'Manual',
+            'Pending',
+            'Reported',
+            'Rejected',
+            'Quoted',
+            'Assigned',
+            'Finished',
+            'Completed',
+            'Approved',
+            'Unapprove',
+            'Unquoted'
+        ],
+        'Key Management' => ['Manual'],
+        'Lease Renewal' => ['Manual'],
+        'Owner Contact' => ['Manual'],
+        'Reminders - Property' => [
+            'Manual',
+            'Report'
+        ],
+        'Rental Listing' => [
+            'Manual',
+            'Created',
+            'Published',
+            'Leased',
+            'Closed'
+        ],
+        'Sale Listing' => [
+            'Manual',
+            'Created',
+            'Published',
+            'Leased',
+            'Closed'
+        ],
+        'Sales Agreement' => [
+            'Manual',
+            'Contracted',
+            'Listed'
+        ],
+        'Task' => [
+            'Created',
+            'Manual'
+        ],
+        'Tenancy' => [
+            'Manual',
+            'Created',
+            'Rent Adjustment'
+        ],
+        'Tenant Invoice' => [
+            'Manual',
+            'Created'
+        ],
+        'Tenant Receipt' => ['Receipted'],
+        'Tenant Rent Invoice' => [
+            'Manual',
+            'Created'
+        ],
+        'Tenant Statement' => ['Disbursed'],
+        'Folio Receipt' => ['Receipted'],
+        'Owner Financial Activity' => ['Created'],
+        'Owner Statement' => ['Disbursed'],
+        'Supplier Statement' => ['Disbursed']
+    ];
+
+    public $defaultTriggerTos = [
+        'Contact' => ['Contact'],
+        'Inspections All' => [
+            'Owner',
+            'Tenant'
+        ],
+        'Inspections Routine' => [
+            'Owner',
+            'Tenant'
+        ],
+        'Job' => [
+            'Supplier',
+            'Owner',
+            'Tenant',
+            'Agent',
+        ],
+        'Key Management' => ['Checked Out To'],
+        'Lease Renewal' => [
+            'Owner',
+            'Tenant'
+        ],
+        'Owner Contact' => ['Owner'],
+        'Reminders - Property' => [
+            'Owner',
+            'Tenant',
+            'Supplier'
+        ],
+        'Rental Listing' => [
+            'Tenant',
+            'Owner'
+        ],
+        'Sale Listing' => [
+            'Tenant',
+            'Owner'
+        ],
+        'Sales Agreement' => [
+            'Buyer',
+            'Seller'
+        ],
+        'Task' => [
+            'Contact',
+            'Owner',
+            'Tenant'
+        ],
+        'Tenancy' => [
+            'Owner',
+            'Tenant',
+            'Strata Manager'
+        ],
+        'Tenant Invoice' => ['Tenant'],
+        'Tenant Receipt' => ['Tenant'],
+        'Tenant Rent Invoice' => ['Tenant'],
+        'Tenant Statement' => ['Tenant'],
+        'Folio Receipt' => ['Folio'],
+        'Owner Financial Activity' => ['Owner'],
+        'Owner Statement' => ['Owner'],
+        'Supplier Statement' => ['Supplier']
+    ];
+
     /**
      * Display a listing of the resource.
      *
@@ -569,31 +739,28 @@ class CompanyController extends Controller
     public function store(Request $request)
     {
         $attributeNames = array(
-            'company_name'        => $request->company_name,
-            'phone'              => $request->phone,
-            'address'            => $request->address,
+            'company_name' => $request->company_name,
+            'phone' => $request->phone,
+            'address' => $request->address,
         );
 
         $validator = Validator::make($attributeNames, [
-            'company_name'        => 'required',
-            'phone'              => 'required',
-            'address'              => 'required',
+            'company_name' => 'required',
+            'phone' => 'required',
+            'address' => 'required',
         ]);
         if ($validator->fails()) {
             return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
         } else {
-            // return auth('api')->user();
-            // return "heello";
             $db = DB::transaction(function () use ($request) {
                 $company = new Company();
                 $company->company_name = $request->company_name;
                 $company->address = $request->address;
                 // $company->country = $request->country;
-
-
                 $company->phone = $request->phone;
                 $company->slug = Str::of($request->company_name)->slug('-');
                 $company->save();
+
                 foreach ($this->accounts as $value) {
                     $chartofaccount = new Account();
                     $chartofaccount->account_name = $value["name"];
@@ -606,23 +773,50 @@ class CompanyController extends Controller
                     $chartofaccount->save();
                 }
 
+                foreach ($this->names as $name) {
+                    $action = new MessageActionName();
+                    $action->name = $name;
+                    $action->company_id = $company->id;
+                    $action->save();
+
+                    if (isset($this->defaultTriggerPoints[$name])) {
+                        foreach ($this->defaultTriggerPoints[$name] as $triggerPoint) {
+                            $triggerPointModel = new MessageActionTriggerPoint();
+                            $triggerPointModel->action_id = $action->id;
+                            $triggerPointModel->trigger_point = $triggerPoint;
+                            $triggerPointModel->company_id = $company->id;
+                            $triggerPointModel->save();
+                        }
+                    }
+
+                    if (isset($this->defaultTriggerTos[$name])) {
+                        foreach ($this->defaultTriggerTos[$name] as $triggerTo) {
+                            $triggerToModel = new MessageActionTriggerTo();
+                            $triggerToModel->action_id = $action->id;
+                            $triggerToModel->trigger_to = $triggerTo;
+                            $triggerToModel->company_id = $company->id;
+                            $triggerToModel->save();
+                        }
+                    }
+                }
+
                 $contacts = new Contacts();
-                $contacts->reference             = $request->company_name;
-                $contacts->type                  = $request->type;
-                $contacts->first_name            = $request->company_name;
-                $contacts->last_name             = "Properties";
-                $contacts->salutation            = NULL;
-                $contacts->company_name          = $request->company_name;
-                $contacts->mobile_phone          = $request->phone;
-                $contacts->work_phone            = $request->phone;
-                $contacts->email                 = $request->company_name . $company->id . "@gmail.com";
-                $contacts->abn                   = $request->abn != null ? $request->abn : '0';
-                $contacts->notes                 = $request->notes;
-                $contacts->owner                 = 0;
-                $contacts->tenant                = 0;
-                $contacts->supplier              = 1;
-                $contacts->seller                = 0;
-                $contacts->company_id            = $company->id;
+                $contacts->reference = $request->company_name;
+                $contacts->type = $request->type;
+                $contacts->first_name = $request->company_name;
+                $contacts->last_name = "Properties";
+                $contacts->salutation = NULL;
+                $contacts->company_name = $request->company_name;
+                $contacts->mobile_phone = $request->phone;
+                $contacts->work_phone = $request->phone;
+                $contacts->email = $request->company_name . $company->id . "@gmail.com";
+                $contacts->abn = $request->abn != null ? $request->abn : '0';
+                $contacts->notes = $request->notes;
+                $contacts->owner = 0;
+                $contacts->tenant = 0;
+                $contacts->supplier = 1;
+                $contacts->seller = 0;
+                $contacts->company_id = $company->id;
                 $contacts->save();
                 $contactId = $contacts->id;
 
@@ -653,30 +847,30 @@ class CompanyController extends Controller
 
                 $supplierContact = new SupplierContact();
                 $supplierContact->contact_id = $contacts->id;
-                $supplierContact->reference    = $request->company_name;
-                $supplierContact->first_name   = $request->company_name;
-                $supplierContact->last_name    = "Properties";
-                $supplierContact->salutation   = NULL;
+                $supplierContact->reference = $request->company_name;
+                $supplierContact->first_name = $request->company_name;
+                $supplierContact->last_name = "Properties";
+                $supplierContact->salutation = NULL;
                 $supplierContact->company_name = $request->company_name;
                 $supplierContact->mobile_phone = $request->phone;
-                $supplierContact->work_phone   = $request->phone;
-                $supplierContact->home_phone   = $request->phone;
-                $supplierContact->email        = $request->company_name . $company->id . "@gmail.com";
-                $supplierContact->notes        = $request->notes;
-                $supplierContact->company_id   = $company->id;
+                $supplierContact->work_phone = $request->phone;
+                $supplierContact->home_phone = $request->phone;
+                $supplierContact->email = $request->company_name . $company->id . "@gmail.com";
+                $supplierContact->notes = $request->notes;
+                $supplierContact->company_id = $company->id;
                 $supplierContact->save();
-                $supplierId                       = $supplierContact->id;
+                $supplierId = $supplierContact->id;
 
                 $supplierDetails = new SupplierDetails();
-                $supplierDetails->supplier_contact_id   = $supplierContact->id;
-                $supplierDetails->abn    = $request->abn;
+                $supplierDetails->supplier_contact_id = $supplierContact->id;
+                $supplierDetails->abn = $request->abn;
                 $supplierDetails->system_folio = true;
-                $supplierDetails->website   = $request->website;
-                $supplierDetails->account    = $request->account;
+                $supplierDetails->website = $request->website;
+                $supplierDetails->account = $request->account;
                 $supplierDetails->priority = $request->priority;
                 $supplierDetails->auto_approve_bills = false;
                 $supplierDetails->folio_code = 'SUP000-' . $supplierContact->id;
-                $supplierDetails->company_id   = $company->id;
+                $supplierDetails->company_id = $company->id;
                 $supplierDetails->save();
 
 
@@ -712,36 +906,42 @@ class CompanyController extends Controller
                 // return $companySettingRegion->id;
 
                 $companySetting = new CompanySetting();
-                $companySetting->portfolio_supplier    = $request->company_name;
-                $companySetting->country_id    = $companySettingAddress->id;
-                $companySetting->region_id    =  $companySettingRegion->id;
-                $companySetting->portfolio_name               = $request->company_name;
-                $companySetting->licence_number               = $request->licence_number;
-                $companySetting->include_property_key_number  = $request->include_property_key_number == 'on' ? 1 : 0;
-                $companySetting->update_inspection_date       = $request->update_inspection_date == 'on' ? 1 : 0;
-                $companySetting->client_access                = $request->client_access == 'on' ? 1 : 0;
-                $companySetting->client_access_url            = $request->client_access_url == 'on' ? 1 : 0;
-                $companySetting->portfolio_id                 =  $request->company_name;;
-                $companySetting->working_hours                = $request->working_hours;
+                $companySetting->portfolio_supplier = $request->company_name;
+                $companySetting->country_id = $companySettingAddress->id;
+                $companySetting->region_id = $companySettingRegion->id;
+                $companySetting->portfolio_name = $request->company_name;
+                $companySetting->licence_number = $request->licence_number;
+                $companySetting->include_property_key_number = $request->include_property_key_number == 'on' ? 1 : 0;
+                $companySetting->update_inspection_date = $request->update_inspection_date == 'on' ? 1 : 0;
+                $companySetting->client_access = $request->client_access == 'on' ? 1 : 0;
+                $companySetting->client_access_url = $request->client_access_url == 'on' ? 1 : 0;
+                $companySetting->portfolio_id = $request->company_name;
+                ;
+                $companySetting->working_hours = $request->working_hours;
                 // $companySetting->status = $request->status == 'on' ? 1 : 0;
                 $companySetting->inspection_report_disclaimer = $request->inspection_report_disclaimer;
-                $companySetting->rental_position_on_receipts  = $request->rental_position_on_receipts == 'on' ? 1 : 0;;
-                $companySetting->show_effective_paid_to_dates = $request->show_effective_paid_to_dates == 'on' ? 1 : 0;;
-                $companySetting->include_paid_bills           = $request->include_paid_bills == 'on' ? 1 : 0;;
-                $companySetting->bill_approval                = $request->bill_approval == 'on' ? 1 : 0;;
-                $companySetting->join_the_test_program        = $request->join_the_test_program == 'on' ? 1 : 0;;
-                $companySetting->company_id                   = $company->id;
+                $companySetting->rental_position_on_receipts = $request->rental_position_on_receipts == 'on' ? 1 : 0;
+                ;
+                $companySetting->show_effective_paid_to_dates = $request->show_effective_paid_to_dates == 'on' ? 1 : 0;
+                ;
+                $companySetting->include_paid_bills = $request->include_paid_bills == 'on' ? 1 : 0;
+                ;
+                $companySetting->bill_approval = $request->bill_approval == 'on' ? 1 : 0;
+                ;
+                $companySetting->join_the_test_program = $request->join_the_test_program == 'on' ? 1 : 0;
+                ;
+                $companySetting->company_id = $company->id;
                 $companySetting->save();
 
                 $messageSetting = new MessageSetting();
-                $messageSetting->email_will_be_sent_as    = $request->company_name;
-                $messageSetting->company_id    = $company->id;
+                $messageSetting->email_will_be_sent_as = $request->company_name;
+                $messageSetting->company_id = $company->id;
                 $messageSetting->save();
 
                 $protfolioMessageSetting = new MessagePortfolioEmailSetting();
-                $protfolioMessageSetting->portfolio_email    = $request->company_name;
-                $protfolioMessageSetting->company_id    = $company->id;
-                $protfolioMessageSetting->message_setting_id    = $messageSetting->id;
+                $protfolioMessageSetting->portfolio_email = $request->company_name;
+                $protfolioMessageSetting->company_id = $company->id;
+                $protfolioMessageSetting->message_setting_id = $messageSetting->id;
                 $protfolioMessageSetting->save();
 
 
@@ -786,18 +986,18 @@ class CompanyController extends Controller
     {
 
         $attributeNames = array(
-            'company_name'        => $request->company_name,
-            'phone'              => $request->phone,
+            'company_name' => $request->company_name,
+            'phone' => $request->phone,
             // 'created_by'        => $userName,
             // 'soft_delete'       => $defaultValue,
-            'address'            => $request->address,
+            'address' => $request->address,
             // 'sort_order'        => $request->sort_order
         );
 
         $validator = Validator::make($attributeNames, [
-            'company_name'        => 'required',
-            'phone'              => 'required',
-            'address'              => 'required',
+            'company_name' => 'required',
+            'phone' => 'required',
+            'address' => 'required',
 
             // 'created_by'        => 'required',
             // 'soft_delete'       => 'required'

@@ -9,8 +9,8 @@ class ContactLabel extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
-    
+    protected $fillable = ['contact_id', 'labels'];
+
     protected static function newFactory()
     {
         return \Modules\Contacts\Database\factories\ContactLabelFactory::new();

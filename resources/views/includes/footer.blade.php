@@ -1,6 +1,6 @@
 <!-- Footer -->
 <footer class="main-footer">
-    <strong>Copyright &copy; {{ date('Y') }} <a href="#">CliqProperty</a>.</strong>
+    <strong>Copyright &copy; 2021 <a href="#">myDay</a>.</strong>
     All rights reserved.
     <div class="float-right d-none d-sm-inline-block">
         <b>Version</b> 1.0

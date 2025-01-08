@@ -13,33 +13,13 @@ use Modules\Contacts\Entities\OwnerFolio;
 use Modules\Contacts\Entities\SellerFolio;
 use Modules\Contacts\Entities\SupplierDetails;
 use Modules\Contacts\Entities\TenantFolio;
-
-// use Properties;
-
+use Carbon\Carbon;
 class FolioLedgerController extends Controller
 {
     /**
      * Display a listing of the resource.
      * @return Renderable
      */
-    // public function index($year, $month)
-    // {
-    //     try {
-
-    //         $folioLedgerOwner = FolioLedgerDetailsDaily::where('date', 'LIKE', '%' . $year . '-' . $month . '%')->where('folio_type', 'owner')->orderBy('folio_id', 'DESC')->get();
-    //         $folioLedgerTenant = FolioLedgerDetailsDaily::where('date', 'LIKE', '%' . $year . '-' . $month . '%')->where('folio_type', 'LIKE', '%tenant%')->orderBy('folio_id', 'DESC')->get();
-    //         $folioLedgerSupplier = FolioLedgerDetailsDaily::where('date', 'LIKE', '%' . $year . '-' . $month . '%')->where('folio_type', 'Supplier')->orderBy('folio_id', 'DESC')->get();
-    //         return response()->json([
-    //             'message' => 'folioLedger  saved successfully',
-    //             'folioLedgerOwner' => $folioLedgerOwner,
-    //             'folioLedgerTenant' => $folioLedgerTenant,
-    //             'folioLedgerSupplier' => $folioLedgerSupplier,
-
-    //         ], 200);
-    //     } catch (\Throwable $th) {
-    //         return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
-    //     }
-    // }
     public function index($year, $month)
     {
         try {
@@ -62,6 +42,139 @@ class FolioLedgerController extends Controller
                 'tenant' => $tenant,
                 'supplier' => $supplier,
                 'seller' => $seller,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    /**
+     * Display a listing of the resource.
+     * @return Renderable
+     */
+    public function ownerFolioLedger($id)
+    {
+        try {
+            $currentYear = Carbon::now()->year;
+            $currentMonth = Carbon::now()->month;
+            $owner = OwnerFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'owner_contact_id', 'folio_code')
+                ->where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('ownerContacts:id,property_id,contact_id,reference', 'ownerProperties:id,reference')
+                ->with(['folio_ledger' => function ($q) use ($currentYear, $currentMonth) {
+                    $q->where('date', 'LIKE', '%' . $currentYear . '-' . $currentMonth . '%');
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+            return response()->json([
+                'data' => $owner,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+    /**
+     * Display a listing of the resource.
+     * @return Renderable
+     */
+    public function ownerFilteredFolioLedger($id, Request $request)
+    {
+        try {
+            $owner = OwnerFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'owner_contact_id', 'folio_code')
+                ->where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('ownerContacts:id,property_id,contact_id,reference', 'ownerProperties:id,reference')
+                ->with(['folio_ledger' => function ($q) use ($request) {
+                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+            return response()->json([
+                'data' => $owner,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function supplierFolioLedger($id)
+    {
+        try {
+            $currentYear = Carbon::now()->year;
+            $currentMonth = Carbon::now()->month;
+            $supplier = SupplierDetails::where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('supplierContact')
+                ->with(['folio_ledger' => function ($q) use ($currentYear, $currentMonth) {
+                    $q->where('date', 'LIKE', '%' . $currentYear . '-' . $currentMonth . '%');
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+            return response()->json([
+                'data' => $supplier,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+    /**
+     * Display a listing of the resource.
+     * @return Renderable
+     */
+    public function supplierFilteredFolioLedger($id, Request $request)
+    {
+        try {
+            $supplier = SupplierDetails::where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('supplierContact')
+                ->with(['folio_ledger' => function ($q) use ($request) {
+                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+                // $supplier = SupplierDetails::where('id', $id)->with('supplierContact:id,contact_id,reference')->with(['folio_ledger' => function ($q) use ($request) {
+                //     $q->whereBetween('date', 'LIKE', '%' . $request->from_date . '-' . $request->to_date . '%');
+                // }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->first();
+
+            return response()->json([
+                'data' => $supplier,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function sellerFolioLedger($id)
+    {
+        try {
+            $currentYear = Carbon::now()->year;
+            $currentMonth = Carbon::now()->month;
+            $supplier = SellerFolio::where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('sellerContacts.sellerFolio')
+                ->with(['folio_ledger' => function ($q) use ($currentYear, $currentMonth) {
+                    $q->where('date', 'LIKE', '%' . $currentYear . '-' . $currentMonth . '%');
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+            return response()->json([
+                'data' => $supplier,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+    /**
+     * Display a listing of the resource.
+     * @return Renderable
+     */
+    public function sellerFilteredFolioLedger($id, Request $request)
+    {
+        try {
+            $supplier = SellerFolio::where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('sellerContacts.sellerFolio')
+                ->with(['folio_ledger' => function ($q) use ($request) {
+                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+            return response()->json([
+                'data' => $supplier,
                 'message' => 'Successful'
             ], 200);
         } catch (\Throwable $th) {
@@ -106,57 +219,6 @@ class FolioLedgerController extends Controller
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     * @param Request $request
-     * @return Renderable
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Show the specified resource.
-     * @param int $id
-     * @return Renderable
-     */
-    public function show($id)
-    {
-        return view('accounts::show');
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     * @param int $id
-     * @return Renderable
-     */
-    public function edit($id)
-    {
-        return view('accounts::edit');
-    }
-
-    /**
-     * Update the specified resource in storage.
-     * @param Request $request
-     * @param int $id
-     * @return Renderable
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     * @param int $id
-     * @return Renderable
-     */
-    public function destroy($id)
-    {
-        //
     }
 
     public function folioLedgerUpdate()

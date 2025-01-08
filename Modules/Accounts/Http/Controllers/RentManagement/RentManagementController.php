@@ -308,4 +308,37 @@ class RentManagementController extends Controller
         $totalAdjustedRent = $fromOldRent + $fromNewRent;
         return round($totalAdjustedRent, 2);
     }
+
+    public function reverseRentManagement ($receipt, $receipt_details, $rent_management) {
+        $total_amount = $receipt_details->amount;
+        $amount = 0; $credit_amount = 0;
+        foreach ($rent_management as $value) {
+            $credit_amount = $value->rentManagement->credit;
+            if ($value->rentManagement->received >= $total_amount) {
+                $amount = $value->rentManagement->received - $total_amount;
+                $total_amount = 0;
+                if ($credit_amount > 0) {
+                    if ($credit_amount >= $receipt->rent_action->amount) {
+                        $credit_amount = $value->rentManagement->credit - $receipt->rent_action->amount;
+                    }
+                }
+
+            } elseif ($value->rentManagement->received < $total_amount) {
+                $total_amount = $total_amount - $value->rentManagement->received;
+                $amount = 0;
+                if ($credit_amount > 0) {
+                    if ($credit_amount >= $receipt->rent_action->amount) {
+                        $credit_amount = $value->rentManagement->credit - $receipt->rent_action->amount;
+                    }
+                }
+            }
+
+            RentManagement::where('id', $value->rent_management_id)->update([
+                'received' => $amount,
+                'credit' => $credit_amount
+            ]);
+
+            RentReceiptDetail::where('id', $value->id)->delete();
+        }
+    }
 }

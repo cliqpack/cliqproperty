@@ -1,22 +1,16 @@
 <?php
 
 namespace Modules\Maintenance\Http\Controllers;
-
-use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Modules\Accounts\Http\Controllers\DocumentGenerateController;
-use Modules\Contacts\Entities\TenantContact;
 use Modules\Maintenance\Entities\Maintenance;
 use Modules\Maintenance\Entities\MaintenanceAssignSupplier;
 use Modules\Maintenance\Entities\MaintenanceQuote;
 use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
-use stdClass;
 
 class MaintenancesQuoteController extends Controller
 {
@@ -46,14 +40,10 @@ class MaintenancesQuoteController extends Controller
     public function store(Request $request)
     {
         try {
-            // return "cghfhjhvjk";
             $attributesNames = array(
                 'job_id' => $request->job_id,
                 'supplier_id' => $request->supplier_id,
-
             );
-
-
             $validator = Validator::make($attributesNames, [
                 'job_id',
                 'supplier_id',
@@ -77,10 +67,10 @@ class MaintenancesQuoteController extends Controller
                 $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->first();
                 $tenantID = $maintenance->tenant_id;
 
-                $property_id =  $maintenance['property_id'];
-                $message_action_name = "Maintenance";
-                $messsage_trigger_point = 'Quoted';
+                $property_id = $maintenance['property_id'];
 
+                $message_action_name = "Job";
+                $messsage_trigger_point = 'Quoted';
                 $data = [
                     "property_id" => $property_id,
                     "status" => "Quoted",
@@ -88,8 +78,7 @@ class MaintenancesQuoteController extends Controller
                     "tenant_contact_id" => $tenantID,
                 ];
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
+                $activityMessageTrigger->trigger();
 
                 return response()->json(['job_id' => $request->job_id, 'message' => 'successfull'], 200);
             }
@@ -239,10 +228,9 @@ class MaintenancesQuoteController extends Controller
             } else {
                 DB::transaction(function () use ($request) {
                     $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->first();
-                    $property_id =  $maintenance['property_id'];
+                    $property_id = $maintenance['property_id'];
                     $maintenance->status = "Assigned";
                     $maintenance->update();
-                    // $maintenance = Maintenance::where('id', $request->job_id)->update(["status" => "Assigned"]);
                     $quote = MaintenanceQuote::where('id', $request->id);
                     $quote->update([
                         'status' => "approve"
@@ -256,8 +244,8 @@ class MaintenancesQuoteController extends Controller
                     $maintenanceAssign->assign_from = 'Quoted';
                     $maintenanceAssign->save();
 
-                    $message_action_name = "Maintenance";
-                    $messsage_trigger_point = 'Approve Quote';
+                    $message_action_name = "Job";
+                    $messsage_trigger_point = 'Assigned';
                     $data = [
                         "property_id" => $property_id,
                         "status" => "Quote approve",
@@ -265,14 +253,7 @@ class MaintenancesQuoteController extends Controller
                     ];
 
                     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                    $value = $activityMessageTrigger->trigger();
-
-                    $maintenances = new MaintenancesController();
-                    $workOrder = $maintenances->workOrderPdf($request->job_id, 'n');
-                    // return $workOrder;
-                   
-                    
+                    $activityMessageTrigger->trigger();
                 });
                 return response()->json(['job_id' => $request->job_id, 'message' => 'successfull'], 200);
             }

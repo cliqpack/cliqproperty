@@ -3,9 +3,6 @@
 namespace Modules\Contacts\Http\Controllers;
 
 use Carbon\Carbon;
-use DateInterval;
-use DatePeriod;
-use DateTime;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -27,15 +24,14 @@ use Modules\Accounts\Entities\ReceiptDetails;
 use Modules\Accounts\Entities\Withdrawal;
 use Modules\Accounts\Http\Controllers\RentManagement\RentManagementController;
 use Modules\Accounts\Http\Controllers\TriggerBillController;
-use Modules\Accounts\Http\Controllers\TriggerFeeBasedBillController;
 use Modules\Accounts\Http\Controllers\TriggerPropertyFeeBasedBillController;
 use Modules\Contacts\Entities\ContactDetails;
 use Modules\Contacts\Entities\OwnerFolio;
 use Modules\Contacts\Entities\RentDetail;
-use Modules\Contacts\Entities\RentManagement;
 use Modules\Contacts\Entities\TenantPayment;
 use Modules\Contacts\Http\Controllers\Tenant\TenantStoreController;
 use Modules\Properties\Entities\Properties;
+use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 
 class TenantController extends Controller
 {
@@ -66,7 +62,36 @@ class TenantController extends Controller
     public function property_tenant_info($propertyId)
     {
         try {
-            $tenant = TenantContact::where('property_id', $propertyId)->where('status', 'true')->first();
+
+            $property = Properties::where('id', $propertyId)->first();
+
+            if ($property->status === "Archived") {
+                $tenant = TenantContact::where('property_id', $propertyId)->first();
+                $tenantFolio = $tenant ? $tenant->tenantFolio : null;
+            } else {
+                $tenant = TenantContact::where('property_id', $propertyId)->where('status', 'true')
+                    ->first();
+                $tenantFolio = $tenant ? $tenant->tenantFolio : null;
+            }
+            return response()->json([
+                'data' => $tenant,
+                'folio' => $tenantFolio,
+                'status' => "Success"
+            ], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
+        }
+    }
+    /**
+     * Store a newly created resource in storage.
+     * @param Request $request
+     * @return Renderable
+     */
+
+    public function tenant_info($tenantid)
+    {
+        try {
+            $tenant = TenantContact::where('id', $tenantid)->first();
             $tenantFolio = $tenant ? $tenant->tenantFolio : null;
             return response()->json([
                 'data' => $tenant,
@@ -83,90 +108,71 @@ class TenantController extends Controller
         try {
             $attributeNames = array(
                 // Tenant Contact
-                'reference'             => $request->reference,
-                'contact_id'            => $request->contact_id,
-                'first_name'            => $request->contacts[0]['first_name'],
-                'last_name'             => $request->contacts[0]['last_name'],
-                'salutation'            => $request->contacts[0]['salutation'],
-                'company_name'          => $request->contacts[0]['company_name'],
-                'mobile_phone'          => $request->contacts[0]['mobile_phone'],
-                'work_phone'            => $request->contacts[0]['work_phone'],
-                'home_phone'            => $request->contacts[0]['home_phone'],
-                'email'                 => $request->contacts[0]['email'],
-                'abn'                   => $request->abn,
-                'notes'                 => $request->notes,
-                'tenant'                => 1,
-                'company_id'            => auth('api')->user()->company_id,
+                'reference' => $request->reference,
+                'contact_id' => $request->contact_id,
+                'first_name' => $request->contacts[0]['first_name'],
+                'last_name' => $request->contacts[0]['last_name'],
+                'salutation' => $request->contacts[0]['salutation'],
+                'company_name' => $request->contacts[0]['company_name'],
+                'mobile_phone' => $request->contacts[0]['mobile_phone'],
+                'work_phone' => $request->contacts[0]['work_phone'],
+                'home_phone' => $request->contacts[0]['home_phone'],
+                'email' => $request->contacts[0]['email'],
+                'abn' => $request->abn,
+                'notes' => $request->notes,
+                'tenant' => 1,
+                'company_id' => auth('api')->user()->company_id,
 
                 // Tenant Folio
-                'rent'                  => $request->rent,
-                'rent_type'             => $request->rent_type,
-                'rent_includes_tax'     => $request->rent_includes_tax,
-                'bond_required'         => $request->bond_required,
-                'bond_held'             => $request->bond_held,
-                'move_in'               => $request->move_in,
-                'move_out'              => $request->move_out,
-                'agreement_start'       => $request->agreement_start,
-                'agreement_end'         => $request->agreement_end,
-                'periodic_tenancy'      => $request->periodic_tenancy,
-                'paid_to'               => $request->paid_to,
-                'part_paid'             => $request->part_paid,
+                'rent' => $request->rent,
+                'rent_type' => $request->rent_type,
+                'rent_includes_tax' => $request->rent_includes_tax,
+                'bond_required' => $request->bond_required,
+                'bond_held' => $request->bond_held,
+                'move_in' => $request->move_in,
+                'move_out' => $request->move_out,
+                'agreement_start' => $request->agreement_start,
+                'agreement_end' => $request->agreement_end,
+                'periodic_tenancy' => $request->periodic_tenancy,
+                'paid_to' => $request->paid_to,
+                'part_paid' => $request->part_paid,
                 'invoice_days_in_advance' => $request->invoice_days_in_advance,
                 'rent_review_frequency' => $request->rent_review_frequency,
-                'next_rent_review'      => $request->next_rent_review,
-                'exclude_form_arrears'   => $request->exclude_form_arrears,
-                'bank_reterence'        => $request->bank_reterence,
-                'receipt_warning'       => $request->receipt_warning,
-                'tenant_access'         => $request->tenant_access,
+                'next_rent_review' => $request->next_rent_review,
+                'exclude_form_arrears' => $request->exclude_form_arrears,
+                'bank_reterence' => $request->bank_reterence,
+                'receipt_warning' => $request->receipt_warning,
+                'tenant_access' => $request->tenant_access,
             );
             $validator = Validator::make($attributeNames, [
                 // Tenant contact validation
                 'reference' => 'required',
                 'first_name' => 'required',
                 'last_name' => 'required',
-                // 'salutation' => 'required',
-                // 'company_name' => 'required',
-                // 'mobile_phone' => 'required',
-                // 'work_phone' => 'required',
-                // 'home_phone' => 'required',
                 'email' => 'required',
-                // 'abn' => 'required',
-                // 'notes' => 'required',
-
-                // Tenant folio validation
-                // 'rent' => 'required',
-                // 'rent_type' => 'required',
-                // 'rent_includes_tax' => 'required',
-                // 'bond_required' => 'required',
-                // 'bond_held' => 'required',
-                // 'move_in' => 'required',
-                // 'move_out' => 'required',
-                // 'agreement_start' => 'required',
-                // 'periodic_tenancy' => 'required',
-                // 'paid_to' => 'required',
             ]);
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
                 $contactId = null;
                 $status = null;
-                $db = DB::transaction(function () use ($attributeNames, $request,  &$contactId) {
+                $db = DB::transaction(function () use ($attributeNames, $request, &$contactId) {
                     if ($request->contact_id) {
                         $contacts = Contacts::findOrFail($request->contact_id);
                         $contacts->update([
-                            'reference'             => $request->reference,
-                            'type'                  => $request->type,
-                            'first_name'            => $request->contacts[0]['first_name'],
-                            'last_name'             => $request->contacts[0]['last_name'],
-                            'salutation'            => $request->contacts[0]['salutation'],
-                            'company_name'          => $request->contacts[0]['company_name'],
-                            'mobile_phone'          => $request->contacts[0]['mobile_phone'],
-                            'work_phone'            => $request->contacts[0]['work_phone'],
-                            'home_phone'            => $request->contacts[0]['home_phone'],
-                            'email'                 => $request->contacts[0]['email'],
-                            'abn'                   => $request->abn,
-                            'notes'                 => $request->notes,
-                            'company_id'            => auth('api')->user()->company_id,
+                            'reference' => $request->reference,
+                            'type' => $request->type,
+                            'first_name' => $request->contacts[0]['first_name'],
+                            'last_name' => $request->contacts[0]['last_name'],
+                            'salutation' => $request->contacts[0]['salutation'],
+                            'company_name' => $request->contacts[0]['company_name'],
+                            'mobile_phone' => $request->contacts[0]['mobile_phone'],
+                            'work_phone' => $request->contacts[0]['work_phone'],
+                            'home_phone' => $request->contacts[0]['home_phone'],
+                            'email' => $request->contacts[0]['email'],
+                            'abn' => $request->abn,
+                            'notes' => $request->notes,
+                            'company_id' => auth('api')->user()->company_id,
                             'tenant' => 1,
                         ]);
                         $contact_details_delete = ContactDetails::where('contact_id', $request->contact_id)->delete();
@@ -177,27 +183,27 @@ class TenantController extends Controller
                             if ($contact['deleted'] != true) {
                                 $contact_details = new ContactDetails();
                                 $contact_details->contact_id = $contacts->id;
-                                $contact_details->reference            = $contact['reference'];
-                                $contact_details->first_name            = $contact['first_name'];
-                                $contact_details->last_name             = $contact['last_name'];
-                                $contact_details->salutation            = $contact['salutation'];
-                                $contact_details->company_name          = $contact['company_name'];
-                                $contact_details->mobile_phone          = $contact['mobile_phone'];
-                                $contact_details->work_phone            = $contact['work_phone'];
-                                $contact_details->home_phone            = $contact['home_phone'];
-                                $contact_details->email                 = $contact['email'];
-                                $contact_details->primary               = $contact['primary'];
+                                $contact_details->reference = $contact['reference'];
+                                $contact_details->first_name = $contact['first_name'];
+                                $contact_details->last_name = $contact['last_name'];
+                                $contact_details->salutation = $contact['salutation'];
+                                $contact_details->company_name = $contact['company_name'];
+                                $contact_details->mobile_phone = $contact['mobile_phone'];
+                                $contact_details->work_phone = $contact['work_phone'];
+                                $contact_details->home_phone = $contact['home_phone'];
+                                $contact_details->email = $contact['email'];
+                                $contact_details->primary = $contact['primary'];
                                 if ($contact['email1_status'] == '1') {
-                                    $contact_details->email1                = $contact['email1'];
-                                    $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
+                                    $contact_details->email1 = $contact['email1'];
+                                    $contact_details->email1_send_type = $contact['email1_send_type']['value'];
                                 }
                                 if ($contact['email2_status'] == '1') {
-                                    $contact_details->email2                = $contact['email2'];
-                                    $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
+                                    $contact_details->email2 = $contact['email2'];
+                                    $contact_details->email2_send_type = $contact['email2_send_type']['value'];
                                 }
                                 if ($contact['email3_status'] == '1') {
-                                    $contact_details->email3                = $contact['email3'];
-                                    $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
+                                    $contact_details->email3 = $contact['email3'];
+                                    $contact_details->email3_send_type = $contact['email3_send_type']['value'];
                                 }
 
                                 $contact_details->save();
@@ -248,27 +254,27 @@ class TenantController extends Controller
                             if ($contact['deleted'] != true) {
                                 $contact_details = new ContactDetails();
                                 $contact_details->contact_id = $contacts->id;
-                                $contact_details->reference            = $contact['reference'];
-                                $contact_details->first_name            = $contact['first_name'];
-                                $contact_details->last_name             = $contact['last_name'];
-                                $contact_details->salutation            = $contact['salutation'];
-                                $contact_details->company_name          = $contact['company_name'];
-                                $contact_details->mobile_phone          = $contact['mobile_phone'];
-                                $contact_details->work_phone            = $contact['work_phone'];
-                                $contact_details->home_phone            = $contact['home_phone'];
-                                $contact_details->email                 = $contact['email'];
-                                $contact_details->primary               = $contact['primary'];
+                                $contact_details->reference = $contact['reference'];
+                                $contact_details->first_name = $contact['first_name'];
+                                $contact_details->last_name = $contact['last_name'];
+                                $contact_details->salutation = $contact['salutation'];
+                                $contact_details->company_name = $contact['company_name'];
+                                $contact_details->mobile_phone = $contact['mobile_phone'];
+                                $contact_details->work_phone = $contact['work_phone'];
+                                $contact_details->home_phone = $contact['home_phone'];
+                                $contact_details->email = $contact['email'];
+                                $contact_details->primary = $contact['primary'];
                                 if ($contact['email1_status'] == '1') {
-                                    $contact_details->email1                = $contact['email1'];
-                                    $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
+                                    $contact_details->email1 = $contact['email1'];
+                                    $contact_details->email1_send_type = $contact['email1_send_type']['value'];
                                 }
                                 if ($contact['email2_status'] == '1') {
-                                    $contact_details->email2                = $contact['email2'];
-                                    $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
+                                    $contact_details->email2 = $contact['email2'];
+                                    $contact_details->email2_send_type = $contact['email2_send_type']['value'];
                                 }
                                 if ($contact['email3_status'] == '1') {
-                                    $contact_details->email3                = $contact['email3'];
-                                    $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
+                                    $contact_details->email3 = $contact['email3'];
+                                    $contact_details->email3_send_type = $contact['email3_send_type']['value'];
                                 }
 
                                 $contact_details->save();
@@ -340,14 +346,14 @@ class TenantController extends Controller
                     $tenantContact->contact_id = $contacts->id;
                     $tenantContact->property_id = $request->property_id;
                     $tenantContact->reference = $request->reference;
-                    $tenantContact->first_name   = $request->contacts[0]['first_name'];
-                    $tenantContact->last_name    = $request->contacts[0]['last_name'];
-                    $tenantContact->salutation   = $request->contacts[0]['salutation'];
+                    $tenantContact->first_name = $request->contacts[0]['first_name'];
+                    $tenantContact->last_name = $request->contacts[0]['last_name'];
+                    $tenantContact->salutation = $request->contacts[0]['salutation'];
                     $tenantContact->company_name = $request->contacts[0]['company_name'];
                     $tenantContact->mobile_phone = $request->contacts[0]['mobile_phone'];
-                    $tenantContact->work_phone   = $request->contacts[0]['work_phone'];
-                    $tenantContact->home_phone   = $request->contacts[0]['home_phone'];
-                    $tenantContact->email        = $request->contacts[0]['email'];
+                    $tenantContact->work_phone = $request->contacts[0]['work_phone'];
+                    $tenantContact->home_phone = $request->contacts[0]['home_phone'];
+                    $tenantContact->email = $request->contacts[0]['email'];
                     $tenantContact->abn = $request->abn;
                     $tenantContact->notes = $request->notes;
                     if ($currentTenant === NULL) {
@@ -369,91 +375,63 @@ class TenantController extends Controller
                     }
                     $tenantProperty->save();
 
-                    // $contactPostalAddress = new ContactPostalAddress();
-                    // $contactPostalAddress->contact_id = $contacts->id;
-                    // $contactPostalAddress->building_name = $request->postal_building_name;
-                    // $contactPostalAddress->unit = $request->postal_unit;
-                    // $contactPostalAddress->number = $request->postal_number;
-                    // $contactPostalAddress->street = $request->postal_street;
-                    // $contactPostalAddress->suburb = $request->postal_suburb;
-                    // $contactPostalAddress->postcode = $request->postal_postcode;
-                    // $contactPostalAddress->state = $request->postal_state;
-                    // $contactPostalAddress->country = $request->postal_country;
-
-                    // $contactPostalAddress->save();
-
-                    // $contactPhysicalAddress = new ContactPhysicalAddress();
-                    // $contactPhysicalAddress->contact_id = $contacts->id;
-                    // $contactPhysicalAddress->building_name = $request->physical_building_name;
-                    // $contactPhysicalAddress->unit = $request->physical_unit;
-                    // $contactPhysicalAddress->number = $request->physical_number;
-                    // $contactPhysicalAddress->street = $request->physical_street;
-                    // $contactPhysicalAddress->suburb = $request->physical_suburb;
-                    // $contactPhysicalAddress->postcode = $request->physical_postcode;
-                    // $contactPhysicalAddress->state = $request->physical_state;
-                    // $contactPhysicalAddress->country = $request->physical_country;
-
-                    // $contactPhysicalAddress->save();
-
                     $rent_details = new RentDetail();
-                    $rent_details->tenant_id =  $tenantContact->id;
-                    $rent_details->rent_amount =  $request->rent;
-                    $rent_details->notice_period =  5;
-                    $rent_details->active_date =  $request->move_in;
-                    $rent_details->active =  1;
+                    $rent_details->tenant_id = $tenantContact->id;
+                    $rent_details->rent_amount = $request->rent;
+                    $rent_details->notice_period = 5;
+                    $rent_details->active_date = $request->move_in;
+                    $rent_details->active = 1;
                     $rent_details->save();
 
-
                     $tenantFolio = new TenantFolio();
-                    $tenantFolio->tenant_contact_id         = $tenantContact->id;
-                    $tenantFolio->property_id               = $request->property_id;
-                    $tenantFolio->rent                      = $request->rent;
-                    $tenantFolio->rent_type                 = $request->rent_type;
-                    $tenantFolio->rent_includes_tax         = $request->rent_includes_tax;
-                    $tenantFolio->bond_required             = $request->bond_required;
-                    $tenantFolio->bond_held                 = $request->bond_held;
-                    $tenantFolio->move_in                   = $request->move_in;
-                    $tenantFolio->move_out                  = $request->move_out;
-                    $tenantFolio->agreement_start           = $request->agreement_start;
-                    $tenantFolio->agreement_end             = $request->agreement_end;
-                    $tenantFolio->periodic_tenancy          = $request->periodic_tenancy;
-                    $tenantFolio->paid_to                   = $request->paid_to;
-                    $tenantFolio->part_paid                 = $request->part_paid;
-                    $tenantFolio->part_paid_description     = 'Paid to ' . $request->paid_to;
-                    $tenantFolio->invoice_days_in_advance    = $request->invoice_days_in_advance;
-                    $tenantFolio->rent_review_frequency     = $request->rent_review_frequency;
-                    $tenantFolio->next_rent_review          = $request->next_rent_review;
-                    $tenantFolio->exclude_form_arrears       = $request->exclude_form_arrears;
-                    $tenantFolio->bank_reterence            = $request->bank_reterence;
-                    $tenantFolio->receipt_warning           = $request->receipt_warning;
-                    $tenantFolio->tenant_access             = $request->tenant_access;
-                    $tenantFolio->folio_code                = "TEN000" . $tenantContact->id;
+                    $tenantFolio->tenant_contact_id = $tenantContact->id;
+                    $tenantFolio->property_id = $request->property_id;
+                    $tenantFolio->rent = $request->rent;
+                    $tenantFolio->rent_type = $request->rent_type;
+                    $tenantFolio->rent_includes_tax = $request->rent_includes_tax;
+                    $tenantFolio->bond_required = $request->bond_required;
+                    $tenantFolio->bond_held = $request->bond_held;
+                    $tenantFolio->move_in = $request->move_in;
+                    $tenantFolio->move_out = $request->move_out;
+                    $tenantFolio->agreement_start = $request->agreement_start;
+                    $tenantFolio->agreement_end = $request->agreement_end;
+                    $tenantFolio->periodic_tenancy = $request->periodic_tenancy;
+                    $tenantFolio->paid_to = $request->paid_to;
+                    $tenantFolio->part_paid = $request->part_paid;
+                    $tenantFolio->part_paid_description = 'Paid to ' . $request->paid_to;
+                    $tenantFolio->invoice_days_in_advance = $request->invoice_days_in_advance;
+                    $tenantFolio->rent_review_frequency = $request->rent_review_frequency;
+                    $tenantFolio->next_rent_review = $request->next_rent_review;
+                    $tenantFolio->exclude_form_arrears = $request->exclude_form_arrears;
+                    $tenantFolio->bank_reterence = $request->bank_reterence;
+                    $tenantFolio->receipt_warning = $request->receipt_warning;
+                    $tenantFolio->tenant_access = $request->tenant_access;
+                    $tenantFolio->folio_code = "TEN000" . $tenantContact->id;
 
-
-                    $tenantFolio->pro_rata_to               = $request->pro_rata_to;
-                    $tenantFolio->rent_invoice              = $request->rent_invoice;
-                    $tenantFolio->bond_already_paid         = $request->bond_already_paid;
-                    $tenantFolio->bond_receipted            = $request->bond_receipted;
-                    $tenantFolio->bond_arreas               = $request->bond_arreas ? $request->bond_arreas : $request->bond_required;
-                    $tenantFolio->bond_reference            = $request->bond_reference;
-                    $tenantFolio->break_lease               = $request->break_lease;
-                    $tenantFolio->termination               = $request->termination;
-                    $tenantFolio->notes                     = $request->bond_notes;
+                    $tenantFolio->pro_rata_to = $request->pro_rata_to;
+                    $tenantFolio->rent_invoice = $request->rent_invoice;
+                    $tenantFolio->bond_already_paid = $request->bond_already_paid;
+                    $tenantFolio->bond_receipted = $request->bond_receipted;
+                    $tenantFolio->bond_arreas = $request->bond_arreas ? $request->bond_arreas : $request->bond_required;
+                    $tenantFolio->bond_reference = $request->bond_reference;
+                    $tenantFolio->break_lease = $request->break_lease;
+                    $tenantFolio->termination = $request->termination;
+                    $tenantFolio->notes = $request->bond_notes;
                     if ($currentTenant === NULL) {
                         $tenantFolio->status = 'true';
                     } elseif ($props_data->tenant_id && $currentTenant->move_out < $request->move_in) {
                         $tenantFolio->status = 'false';
                     }
                     if ($request->bond_required == $request->bond_held) {
-                        $tenantFolio->bond_cleared_date             = date('Y-m-d');
+                        $tenantFolio->bond_cleared_date = date('Y-m-d');
                         $tenantFolio->bond_part_paid_description = "Bond for " . $props_data->reference;
                     } else {
-                        $tenantFolio->bond_due_date             = date('Y-m-d');
+                        $tenantFolio->bond_due_date = date('Y-m-d');
                         $tenantFolio->bond_part_paid_description = "Part payment of bond for " . $props_data->reference;
                     }
-                    $tenantFolio->company_id                = auth('api')->user()->company_id;
-
+                    $tenantFolio->company_id = auth('api')->user()->company_id;
                     $tenantFolio->save();
+
                     $rentManagementDateCycle = new RentManagementController();
                     $dates = $rentManagementDateCycle->getDatesFromRange($request->paid_to, $request->agreement_end, $request->rent_type);
                     $rentManagementDateCycle->rentManagementCycle($dates, $tenantContact->id, $request->property_id, $request->rent, $request->rent_type);
@@ -499,6 +477,18 @@ class TenantController extends Controller
                     PropertyActivity::where('property_id', $request->property_id)->update([
                         "tenant_contact_id" => $tenantContact->id
                     ]);
+
+                    $message_action_name = "Tenancy";
+                    $messsage_trigger_point = 'Created';
+                    $data = [
+                        "property_id" => $request->property_id,
+                        "status" => "Created",
+                        'id' => $tenantContact->id,
+                        "tenant_contact_id" => $tenantContact->id
+                    ];
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+
                     return response()->json([
                         'message' => 'Tenant created successfully',
                         'status' => 'Success',
@@ -518,40 +508,40 @@ class TenantController extends Controller
         try {
             $attributeNames = array(
                 // Tenant Contact
-                'reference'             => $request->reference,
+                'reference' => $request->reference,
                 // 'contact_id'            => $request->contact_id,
-                'first_name'            => $request->contacts[0]['first_name'],
-                'last_name'             => $request->contacts[0]['last_name'],
-                'salutation'            => $request->contacts[0]['salutation'],
-                'company_name'          => $request->contacts[0]['company_name'],
-                'mobile_phone'          => $request->contacts[0]['mobile_phone'],
-                'work_phone'            => $request->contacts[0]['work_phone'],
-                'home_phone'            => $request->contacts[0]['home_phone'],
-                'email'                 => $request->contacts[0]['email'],
-                'abn'                   => $request->abn,
-                'notes'                 => $request->notes,
-                'tenant'                => 1,
+                'first_name' => $request->contacts[0]['first_name'],
+                'last_name' => $request->contacts[0]['last_name'],
+                'salutation' => $request->contacts[0]['salutation'],
+                'company_name' => $request->contacts[0]['company_name'],
+                'mobile_phone' => $request->contacts[0]['mobile_phone'],
+                'work_phone' => $request->contacts[0]['work_phone'],
+                'home_phone' => $request->contacts[0]['home_phone'],
+                'email' => $request->contacts[0]['email'],
+                'abn' => $request->abn,
+                'notes' => $request->notes,
+                'tenant' => 1,
 
                 // Tenant Folio
-                'rent'                  => $request->rent,
-                'rent_type'             => $request->rent_type,
-                'rent_includes_tax'     => $request->rent_includes_tax,
-                'bond_required'         => $request->bond_required,
-                'bond_held'             => $request->bond_held,
-                'move_in'               => $request->move_in,
-                'move_out'              => $request->move_out,
-                'agreement_start'       => $request->agreement_start,
-                'agreement_end'         => $request->agreement_end,
-                'periodic_tenancy'      => $request->periodic_tenancy,
-                'paid_to'               => $request->paid_to,
-                'part_paid'             => $request->part_paid,
+                'rent' => $request->rent,
+                'rent_type' => $request->rent_type,
+                'rent_includes_tax' => $request->rent_includes_tax,
+                'bond_required' => $request->bond_required,
+                'bond_held' => $request->bond_held,
+                'move_in' => $request->move_in,
+                'move_out' => $request->move_out,
+                'agreement_start' => $request->agreement_start,
+                'agreement_end' => $request->agreement_end,
+                'periodic_tenancy' => $request->periodic_tenancy,
+                'paid_to' => $request->paid_to,
+                'part_paid' => $request->part_paid,
                 'invoice_days_in_advance' => $request->invoice_days_in_advance,
                 'rent_review_frequency' => $request->rent_review_frequency,
-                'next_rent_review'      => $request->next_rent_review,
-                'exclude_form_arrears'   => $request->exclude_form_arrears,
-                'bank_reterence'        => $request->bank_reterence,
-                'receipt_warning'       => $request->receipt_warning,
-                'tenant_access'         => $request->tenant_access,
+                'next_rent_review' => $request->next_rent_review,
+                'exclude_form_arrears' => $request->exclude_form_arrears,
+                'bank_reterence' => $request->bank_reterence,
+                'receipt_warning' => $request->receipt_warning,
+                'tenant_access' => $request->tenant_access,
 
 
             );
@@ -599,14 +589,14 @@ class TenantController extends Controller
                     $tenantContact = TenantContact::where('id', $id);
                     $tenantContact->update([
                         'reference' => $request->reference,
-                        'first_name'            => $request->contacts[0]['first_name'],
-                        'last_name'             => $request->contacts[0]['last_name'],
-                        'salutation'            => $request->contacts[0]['salutation'],
-                        'company_name'          => $request->contacts[0]['company_name'],
-                        'mobile_phone'          => $request->contacts[0]['mobile_phone'],
-                        'work_phone'            => $request->contacts[0]['work_phone'],
-                        'home_phone'            => $request->contacts[0]['home_phone'],
-                        'email'                 => $request->contacts[0]['email'],
+                        'first_name' => $request->contacts[0]['first_name'],
+                        'last_name' => $request->contacts[0]['last_name'],
+                        'salutation' => $request->contacts[0]['salutation'],
+                        'company_name' => $request->contacts[0]['company_name'],
+                        'mobile_phone' => $request->contacts[0]['mobile_phone'],
+                        'work_phone' => $request->contacts[0]['work_phone'],
+                        'home_phone' => $request->contacts[0]['home_phone'],
+                        'email' => $request->contacts[0]['email'],
                         'abn' => $request->abn,
                         'notes' => $request->notes,
                     ]);
@@ -638,15 +628,15 @@ class TenantController extends Controller
                         'bank_reterence' => $request->bank_reterence,
                         'receipt_warning' => $request->receipt_warning,
                         'tenant_access' => $request->tenant_access,
-                        'pro_rata_to'       => $request->pro_rata_to,
-                        'rent_invoice'      => $request->rent_invoice,
+                        'pro_rata_to' => $request->pro_rata_to,
+                        'rent_invoice' => $request->rent_invoice,
                         'bond_already_paid' => $request->bond_already_paid,
-                        'bond_receipted'    => $request->bond_receipted,
-                        'bond_arreas'       => $request->bond_arreas,
-                        'bond_reference'    => $request->bond_reference,
-                        'break_lease'       => $request->break_lease,
-                        'termination'       => $request->termination,
-                        'notes'             => $request->bond_notes,
+                        'bond_receipted' => $request->bond_receipted,
+                        'bond_arreas' => $request->bond_arreas,
+                        'bond_reference' => $request->bond_reference,
+                        'break_lease' => $request->break_lease,
+                        'termination' => $request->termination,
+                        'notes' => $request->bond_notes,
                         'bond_part_paid_description' => $request->bond_required == $request->bond_held ? 'Bond for ' . $tC->property->reference : 'Part payment of bond for ' . $tC->property->reference,
                         'bond_due_date' => $request->bond_required == $request->bond_held ? NULL : date('Y-m-d'),
                         'bond_cleared_date' => $request->bond_required == $request->bond_held ? date('Y-m-d') : NULL,
@@ -681,19 +671,19 @@ class TenantController extends Controller
 
                     $contacts = Contacts::findOrFail($tc->contact_id);
                     $contacts->update([
-                        'reference'             => $request->reference,
-                        'type'                  => $request->type,
-                        'first_name'            => $request->contacts[0]['first_name'],
-                        'last_name'             => $request->contacts[0]['last_name'],
-                        'salutation'            => $request->contacts[0]['salutation'],
-                        'company_name'          => $request->contacts[0]['company_name'],
-                        'mobile_phone'          => $request->contacts[0]['mobile_phone'],
-                        'work_phone'            => $request->contacts[0]['work_phone'],
-                        'home_phone'            => $request->contacts[0]['home_phone'],
-                        'email'                 => $request->contacts[0]['email'],
-                        'abn'                   => $request->abn,
-                        'notes'                 => $request->notes,
-                        'company_id'            => auth('api')->user()->company_id,
+                        'reference' => $request->reference,
+                        'type' => $request->type,
+                        'first_name' => $request->contacts[0]['first_name'],
+                        'last_name' => $request->contacts[0]['last_name'],
+                        'salutation' => $request->contacts[0]['salutation'],
+                        'company_name' => $request->contacts[0]['company_name'],
+                        'mobile_phone' => $request->contacts[0]['mobile_phone'],
+                        'work_phone' => $request->contacts[0]['work_phone'],
+                        'home_phone' => $request->contacts[0]['home_phone'],
+                        'email' => $request->contacts[0]['email'],
+                        'abn' => $request->abn,
+                        'notes' => $request->notes,
+                        'company_id' => auth('api')->user()->company_id,
                         'owner' => 1,
                     ]);
                     $contact_details_delete = ContactDetails::where('contact_id', $tc->contact_id)->delete();
@@ -704,28 +694,28 @@ class TenantController extends Controller
                         if ($contact['deleted'] != true) {
                             $contact_details = new ContactDetails();
                             $contact_details->contact_id = $tc->contact_id;
-                            $contact_details->reference            = $contact['reference'];
-                            $contact_details->first_name            = $contact['first_name'];
-                            $contact_details->last_name             = $contact['last_name'];
-                            $contact_details->salutation            = $contact['salutation'];
-                            $contact_details->company_name          = $contact['company_name'];
-                            $contact_details->mobile_phone          = $contact['mobile_phone'];
-                            $contact_details->work_phone            = $contact['work_phone'];
-                            $contact_details->home_phone            = $contact['home_phone'];
-                            $contact_details->email                 = $contact['email'];
-                            $contact_details->primary               = $contact['primary'];
+                            $contact_details->reference = $contact['reference'];
+                            $contact_details->first_name = $contact['first_name'];
+                            $contact_details->last_name = $contact['last_name'];
+                            $contact_details->salutation = $contact['salutation'];
+                            $contact_details->company_name = $contact['company_name'];
+                            $contact_details->mobile_phone = $contact['mobile_phone'];
+                            $contact_details->work_phone = $contact['work_phone'];
+                            $contact_details->home_phone = $contact['home_phone'];
+                            $contact_details->email = $contact['email'];
+                            $contact_details->primary = $contact['primary'];
 
                             if ($contact['email1_status'] == '1') {
-                                $contact_details->email1                = $contact['email1'];
-                                $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
+                                $contact_details->email1 = $contact['email1'];
+                                $contact_details->email1_send_type = $contact['email1_send_type']['value'];
                             }
                             if ($contact['email2_status'] == '1') {
-                                $contact_details->email2                = $contact['email2'];
-                                $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
+                                $contact_details->email2 = $contact['email2'];
+                                $contact_details->email2_send_type = $contact['email2_send_type']['value'];
                             }
                             if ($contact['email3_status'] == '1') {
-                                $contact_details->email3                = $contact['email3'];
-                                $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
+                                $contact_details->email3 = $contact['email3'];
+                                $contact_details->email3_send_type = $contact['email3_send_type']['value'];
                             }
 
                             $contact_details->save();
@@ -895,7 +885,7 @@ class TenantController extends Controller
                 'contactPostalAddress' => $contactPostalAddress,
                 'contactPostalAddress' => $contactPostalAddress,
                 'contactCommunication' => $contactCommunication,
-                'tenantPayment'        => $tenantPayment,
+                'tenantPayment' => $tenantPayment,
                 'status' => "Success"
             ], 200);
         } catch (\Exception $ex) {
@@ -942,7 +932,6 @@ class TenantController extends Controller
     {
         try {
             $tenantPayment = TenantPayment::where('tenant_contact_id', $request->id)
-                //   ->where('company_id', auth('api')->user()->company_id)
                 ->get();
             $tenantContact = TenantContact::where('id', $request->id)
                 ->where('company_id', auth('api')->user()->company_id)
@@ -957,46 +946,46 @@ class TenantController extends Controller
                 } else {
                     $db = DB::transaction(function () use ($request, $tenantFolio, $tenantPayment, $totalDepositAmount, $tenantContact) {
                         $receipt = new Receipt();
-                        $receipt->property_id    = $tenantFolio->property_id;
-                        $receipt->folio_id       = $tenantFolio->id;
-                        $receipt->folio_type     = "Tenant";
+                        $receipt->property_id = $tenantFolio->property_id;
+                        $receipt->folio_id = $tenantFolio->id;
+                        $receipt->folio_type = "Tenant";
                         $receipt->tenant_folio_id = $tenantFolio->id;
-                        $receipt->contact_id     = NULL;
-                        $receipt->amount         = $totalDepositAmount;
-                        $receipt->receipt_date   = date('Y-m-d');
-                        $receipt->create_date   = date('Y-m-d');
+                        $receipt->contact_id = NULL;
+                        $receipt->amount = $totalDepositAmount;
+                        $receipt->receipt_date = date('Y-m-d');
+                        $receipt->create_date = date('Y-m-d');
                         $receipt->payment_method = "eft";
-                        $receipt->from           = "Tenant";
-                        $receipt->type           = "Withdraw";
-                        $receipt->new_type       = 'Withdrawal';
-                        $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                        $receipt->updated_by     = "";
-                        $receipt->from_folio_id  = $tenantFolio->id;
+                        $receipt->from = "Tenant";
+                        $receipt->type = "Withdraw";
+                        $receipt->new_type = 'Withdrawal';
+                        $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                        $receipt->updated_by = "";
+                        $receipt->from_folio_id = $tenantFolio->id;
                         $receipt->from_folio_type = "Tenant";
-                        $receipt->to_folio_id    = NULL;
-                        $receipt->to_folio_type  = NULL;
-                        $receipt->status         = "Cleared";
-                        $receipt->cleared_date   = Date('Y-m-d');
-                        $receipt->company_id     = auth('api')->user()->company_id;
+                        $receipt->to_folio_id = NULL;
+                        $receipt->to_folio_type = NULL;
+                        $receipt->status = "Cleared";
+                        $receipt->cleared_date = Date('Y-m-d');
+                        $receipt->company_id = auth('api')->user()->company_id;
                         $receipt->save();
 
-                        $receiptDetails                 = new ReceiptDetails();
-                        $receiptDetails->receipt_id     = $receipt->id;
-                        $receiptDetails->allocation     = '';
-                        $receiptDetails->description    = "Withdrawal by EFT to tenant";
-                        $receiptDetails->payment_type   = 'eft';
-                        $receiptDetails->amount         = $totalDepositAmount;
-                        $receiptDetails->folio_id       = $tenantFolio->id;
-                        $receiptDetails->folio_type     = "Tenant";
-                        $receiptDetails->account_id     = NULL;
-                        $receiptDetails->type           = 'Withdraw';
-                        $receiptDetails->pay_type           = 'debit';
-                        $receiptDetails->tenant_folio_id  = $tenantFolio->id;
+                        $receiptDetails = new ReceiptDetails();
+                        $receiptDetails->receipt_id = $receipt->id;
+                        $receiptDetails->allocation = '';
+                        $receiptDetails->description = "Withdrawal by EFT to tenant";
+                        $receiptDetails->payment_type = 'eft';
+                        $receiptDetails->amount = $totalDepositAmount;
+                        $receiptDetails->folio_id = $tenantFolio->id;
+                        $receiptDetails->folio_type = "Tenant";
+                        $receiptDetails->account_id = NULL;
+                        $receiptDetails->type = 'Withdraw';
+                        $receiptDetails->pay_type = 'debit';
+                        $receiptDetails->tenant_folio_id = $tenantFolio->id;
                         $receiptDetails->from_folio_type = "Tenant";
-                        $receiptDetails->to_folio_id    = NULL;
-                        $receiptDetails->to_folio_type  = NULL;
-                        $receiptDetails->company_id     = auth('api')->user()->company_id;
-                        $receiptDetails->disbursed      = 1;
+                        $receiptDetails->to_folio_id = NULL;
+                        $receiptDetails->to_folio_type = NULL;
+                        $receiptDetails->company_id = auth('api')->user()->company_id;
+                        $receiptDetails->disbursed = 1;
                         $receiptDetails->reverse_status = '';
                         $receiptDetails->tax = 0;
                         $receiptDetails->save();
@@ -1041,7 +1030,7 @@ class TenantController extends Controller
                         $disbursement->created_by = auth('api')->user()->id;
                         $disbursement->updated_by = NULL;
                         $disbursement->date = date('Y-m-d');
-                        $disbursement->company_id     = auth('api')->user()->company_id;
+                        $disbursement->company_id = auth('api')->user()->company_id;
                         $disbursement->save();
 
                         $dollarPay = array();
@@ -1112,6 +1101,19 @@ class TenantController extends Controller
                         TenantFolio::where('id', $tenantFolio->id)->where('company_id', auth('api')->user()->company_id)->update([
                             'deposit' => $depositAmount
                         ]);
+
+                        /* Start: Setup and trigger activity message */
+                        $message_action_name = "Tenant Statement";
+                        $messsage_trigger_point = 'Disbursed';
+                        $data = [
+                            "property_id" => $tenantFolio->property_id,
+                            "status" => "Disbursed",
+                            "id" => $tenantFolio->tenant_contact_id,
+                        ];
+                        $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                        $activityMessageTrigger->trigger();
+                        /* End: Setup and trigger activity message */
+
                         return response()->json(['message' => 'Tenant disbursed successfully', 'status' => 'Success']);
                     });
 
@@ -1137,7 +1139,7 @@ class TenantController extends Controller
             if (isset($moveOutDate)) {
                 $datetime1 = strtotime($moveOutDate);
                 $datetime2 = strtotime($paidTo);
-                $remaningDays = (int)(($datetime1 - $datetime2) / 86400);
+                $remaningDays = (int) (($datetime1 - $datetime2) / 86400);
                 // return $days;
 
                 if ($rentType === 'monthly') {
@@ -1151,7 +1153,7 @@ class TenantController extends Controller
                         // return $perDayRent;
                         $dueRent = $remaningDays * $perDayRent;
 
-                        $tenantFolio->due = $due +  $dueRent;
+                        $tenantFolio->due = $due + $dueRent;
                         $tenantFolio->update();
                     }
                 } elseif ($rentType === 'weekly') {
@@ -1189,7 +1191,7 @@ class TenantController extends Controller
                         $perDayRent = $rent / 30;
                         // return $perDayRent;
                         $dueRent = $remaningDays * $perDayRent;
-                        $tenantFolio->due = $due +  $dueRent;
+                        $tenantFolio->due = $due + $dueRent;
                         $tenantFolio->update();
                     }
                 } elseif ($rentType === 'weekly') {
@@ -1232,7 +1234,7 @@ class TenantController extends Controller
                         $perDayRent = $rent / 30;
                         // return $perDayRent;
                         $dueRent = $remaningDays * $perDayRent;
-                        $tenantFolio->due = $due +  $dueRent;
+                        $tenantFolio->due = $due + $dueRent;
                         $tenantFolio->update();
                     }
                 } elseif ($rentType === 'weekly') {
@@ -1262,30 +1264,35 @@ class TenantController extends Controller
     public function property_tenant_due_check_and_archive(Request $request)
     {
         try {
-            // $date = Carbon::now()->format('Y-m-d');
-            // $tenantFolios = TenantFolio::where('tenant_contact_id', $request->tenant_id)->withSum('tenantDueInvoice', 'amount')->withSum('tenantDueInvoice', 'paid')->first();
-            // $invoice_due = floatval($tenantFolios->tenant_due_invoice_sum_amount) - floatval($tenantFolios->tenant_due_invoice_sum_paid);
-
-            // if ($tenantFolios->deposit == '0' || $tenantFolios->deposit == null) {
-            //     if ($tenantFolios->paid_to == $date) {
-            //         if ($tenantFolios->bond_arreas == '0') {
-            //             if ($invoice_due == 0) {
-            //                 TenantContact::where('id', $request->tenant_id)->update(['status' => 'false']);
-            //                 return response()->json(['message' => 'successfull', "staus" => '1', 'due' => '0'], 200);
-            //             } else {
-            //                 return response()->json(['message' => 'Invoice Due Remaining', "staus" => '0', 'due' => $invoice_due], 200);
-            //             }
-            //         } else {
-            //             return response()->json(['message' => 'Bond Arrears Remaining', "staus" => '0', 'due' => $invoice_due], 200);
-            //         }
-            //     } else {
-            //         return response()->json(['message' => 'Your have Rent Arrears', "staus" => '0', 'paid_to' => $tenantFolios->paid_to], 200);
-            //     }
-            // } else {
-            //     return response()->json(['message' => 'You Have Some Deposit Amount', "staus" => '0', 'deposit' => $tenantFolios->deposit], 200);
-            // }
-            TenantContact::where('id', $request->tenant_id)->update(['status' => $request->status]);
-            return response()->json(['message' => 'successfull', "staus" => '1', 'due' => '0'], 200);
+            $tenantFolioData = TenantFolio::where('tenant_contact_id', $request->tenant_id)->withSum('tenantDueInvoice', 'amount')->withSum('tenantDueInvoice', 'paid')->first();
+            if ($tenantFolioData->deposit > 0) {
+                return response()->json(['message' => "Can't archive folio " . $tenantFolioData->folio_code . ", balance is not zero, current balance is $" . $tenantFolioData->deposit, "status" => "Failed"], 200);
+            } else if (($tenantFolioData->tenant_due_invoice_sum_amount - $tenantFolioData->tenant_due_invoice_sum_paid) > 0) {
+                $totalinvoicedue = $tenantFolioData->tenant_due_invoice_sum_amount - $tenantFolioData->tenant_due_invoice_sum_paid;
+                return response()->json(['message' => "Can't archive folio " . $tenantFolioData->folio_code . ", total outstanding invoices is $" . $totalinvoicedue . ". Cancel these invoices and try again.", "status" => "Failed"], 200);
+            }
+            DB::transaction(function () use ($request) {
+                TenantContact::where('id', $request->tenant_id)->update(['status' => $request->status]);
+                TenantFolio::where('tenant_contact_id', $request->tenant_id)->update(['status' => 'false', 'archive' => true]);
+            });
+            return response()->json(['message' => "Tenant folio " . $tenantFolioData->folio_code . " archived successfully.", "status" => 'Success'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
+        }
+    }
+    public function restore_tenant($id)
+    {
+        try {
+            $tenantFolio = TenantFolio::where('tenant_contact_id', $id)->first();
+            if ($tenantFolio) {
+                $property = Properties::find($tenantFolio->property_id);
+                if ($property->status === "Archived") {
+                    return response()->json(['message' => "Can't restore folio " . $tenantFolio->folio_code . " " . $property->reference . " is archived", "status" => "Failed"], status: 400);
+                }
+            }
+            TenantFolio::where('tenant_contact_id', $id)
+                ->update(['status' => 'true', 'archive' => false]);
+            return response()->json(['message' => "Successful", "status" => 'Success'], 200);
         } catch (\Throwable $th) {
             return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
         }
@@ -1326,7 +1333,7 @@ class TenantController extends Controller
                 // 'folio'   => $ownerFolio,
                 // 'contact' => $ownerContact,
                 // 'ownerPendingBill' => $ownerPendingBill,
-                'status'  => "Success"
+                'status' => "Success"
             ], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
@@ -1355,9 +1362,9 @@ class TenantController extends Controller
         try {
             $attributeNames = array(
                 // Tenant Contact
-                'agreement_start'       => $request->agreement_start,
-                'agreement_end'         => $request->agreement_end,
-                'periodic'      => $request->periodic,
+                'agreement_start' => $request->agreement_start,
+                'agreement_end' => $request->agreement_end,
+                'periodic' => $request->periodic,
             );
             $validator = Validator::make($attributeNames, [
                 // Tenant contact validation

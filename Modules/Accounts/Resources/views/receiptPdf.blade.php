@@ -24,7 +24,7 @@
                         <strong>(w) {{ $user['work_phone'] ? $user['work_phone'] : '61489921018' }}</strong>
                         <br>
                         <div>
-                            {{ $user['email'] ? $user['email'] : 'info@cliqproperty.com' }}
+                            {{ $user['email'] ? $user['email'] : 'info@myday.com' }}
                         </div>
                        
                         <div>

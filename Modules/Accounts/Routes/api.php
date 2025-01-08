@@ -3,7 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-
 // use Modules\Accounts\Http\Controllers\BillsController;
 
 /*
@@ -156,8 +155,27 @@ Route::middleware('auth:api')->group(function () {
     //FolioLedgerController Start
     Route::get('/folioledger/{year}/{month}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'index']);
     Route::get('/folioled', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'folioLedgerUpdate']);
+    Route::get('/ownerfolioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'ownerFolioLedger']);
+    Route::post('/owner/filter/folioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'ownerFilteredFolioLedger']);
     Route::get('/folioledger/next_date_opening_balance', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'next_date_opening_balance']);
+    Route::get('/od/summary/transaction/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'odtransaction']);
+    Route::get('/owner/summary/transaction/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'transaction']);
+    Route::get('/summary/transaction/byreport/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'summaryByReport']);
+    Route::get('/summary/transaction/bymonthinfo/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'summaryByMonthInfo']);
+    Route::get('/owner/folio/properties/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'properties']);
+    Route::get('/owner/statements/{id}/{property_id}', [Modules\Accounts\Http\Controllers\OwnerStatements\OwnerStatementsController::class, 'ownerStatements']);
+    Route::resource('/ownerfinancialactivity', OwnerFolioSummary\OwnerFinancialActivityController::class);
+    Route::post('/ownerfinancialactivity/delete', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFinancialActivityController::class, 'destroyMultiple']);
 
+    Route::get('/supplier/summary/transaction/{id}', [Modules\Accounts\Http\Controllers\SupplierFolioSummary\SupplierFolioSummaryController::class, 'supplierTransaction']);
+    Route::get('/supplier/summary/transaction/byreport/{id}', [Modules\Accounts\Http\Controllers\SupplierFolioSummary\SupplierFolioSummaryController::class, 'summaryByReport']);
+    Route::get('/supplier/summary/transaction/bymonthinfo/{id}', [Modules\Accounts\Http\Controllers\SupplierFolioSummary\SupplierFolioSummaryController::class, 'summaryByMonthInfo']);
+    // for supplier 
+    Route::get('/supplierfolioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'supplierFolioLedger']);
+    Route::post('/supplier/filter/folioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'supplierFilteredFolioLedger']);
+    // for seller
+    Route::get('/sellerfolioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'sellerFolioLedger']);
+    Route::post('/seller/filter/folioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'sellerFilteredFolioLedger']);
 
     //FolioLedgerController End
 

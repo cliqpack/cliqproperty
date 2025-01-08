@@ -40,8 +40,7 @@ class OwnerContact extends Model
     }
     public function ownerFolio()
     {
-        return $this->hasOne(OwnerFolio::class, 'id','owner_folio_id');
-        // ->where('status', true);
+        return $this->hasOne(OwnerFolio::class, 'owner_contact_id','id');
     }
     public function ownerFolios()
     {

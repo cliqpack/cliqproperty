@@ -65,4 +65,7 @@ class ReceiptDetails extends Model
     public function invoice() {
         return $this->hasOne(Invoices::class, 'id', 'invoice_id');
     }
+    public function supplierFolio() {
+        return $this->hasOne(SupplierDetails::class, 'id', 'supplier_folio_id');
+    }
 }

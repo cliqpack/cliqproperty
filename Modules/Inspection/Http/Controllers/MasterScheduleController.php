@@ -117,15 +117,12 @@ class MasterScheduleController extends Controller
     public function store(Request $request)
     {
         try {
-
-
             $attributeNames = array(
                 'manager_id' => $request->manager_id,
                 'property_id' => $request->property_id,
                 'date' => $request->date,
                 'start_time' => $request->start_time,
                 'properties' => $request->properties,
-
             );
 
             $master = new MasterSchedule();
@@ -145,11 +142,7 @@ class MasterScheduleController extends Controller
             $master->company_id = auth('api')->user()->company_id;
             $master->save();
 
-
-
-
             foreach ($request->property as $pro) {
-
                 $attributeNames1 = array(
                     'masterSchedule_id' => $master->id,
                     'property_id' => $pro["property_id"],
@@ -157,14 +150,13 @@ class MasterScheduleController extends Controller
                     'schedule_time' => $pro["schedule_time"],
                     'lat' => $pro["lat"],
                     'long' => $pro["long"],
-
                 );
+                
                 InspectionSchedule::create($attributeNames1);
                 $PropertyPreSchedule = PropertyPreSchedule::where('id', $pro["propertyScheduleId"]);
                 $PropertyPreSchedule->update([
                     'status' => 'Closed',
                 ]);
-
 
                 $property = Properties::where('id', $pro["property_id"]);
                 $property_get = $property->first();
@@ -176,8 +168,7 @@ class MasterScheduleController extends Controller
                     $date_week = strtotime($day_str, $date_week);
                     $date_week = date('Y-m-d', $date_week);
 
-                    $propertyUp = $property->update(["routine_inspection_due_date" => $date_week]);
-                    //$property_delete = $property->update(["status" => "deleted"]);
+                    $property->update(["routine_inspection_due_date" => $date_week]);
 
                     $propertyPreScheduleNew = new PropertyPreSchedule();
                     $propertyPreScheduleNew->property_id = $property_get->id;
@@ -194,8 +185,7 @@ class MasterScheduleController extends Controller
                     $date_month = strtotime($day_str, $date_month);
                     $date_month = date('Y-m-d', $date_month);
 
-                    $propertyUp = $property->update(["routine_inspection_due_date" => $date_month]);
-                    // $property_delete = $property->update(["status" => "deleted"]);
+                    $property->update(["routine_inspection_due_date" => $date_month]);
 
                     $propertyPreScheduleNew = new PropertyPreSchedule();
                     $propertyPreScheduleNew->property_id = $property_get->id;
@@ -207,9 +197,7 @@ class MasterScheduleController extends Controller
                     $propertyPreScheduleNew->save();
                 }
 
-
                 $endTime = strtotime("+0 minutes", strtotime($pro["schedule_time"] . ":00"));
-
 
                 $attributeNames = array(
                     'property_id'       => $pro["property_id"],
@@ -224,22 +212,10 @@ class MasterScheduleController extends Controller
                     'level'             => "null",
                     'status'            => "Scheduled",
                     'master_schedule_id' => $master->id,
-
                 );
                 $inspection = Inspection::create($attributeNames);
-                // $tenant_contact = TenantContact::where('property_id', $pro["property_id"])->first();
 
-                // $inspectionActivity = new PropertyActivity();
-                // $inspectionActivity->property_id = $pro["property_id"];
-                // $inspectionActivity->inspection_id = $inspection->id;
-                // $inspectionActivity->tenant_contact_id = $request->tenant_contact_id;
-                // $inspectionActivity->type = 'redirect';
-                // $inspectionActivity->status = "Pending";
-                // $inspectionActivity->save();
-
-
-                $message_action_name = "Inspections";
-                // $message_trigger_to = 'Tenant';
+                $message_action_name = "Inspections All";
                 $messsage_trigger_point = 'Scheduled';
                 $data = [
                     "property_id" => $pro["property_id"],
@@ -247,68 +223,10 @@ class MasterScheduleController extends Controller
                     "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
                     "tenant_contact_id" => $request->tenant_contact_id,
                     "id" => $inspection->id,
-
-
                 ];
-
-
-                $inspectionDate = date('F Y', strtotime($request->ins_date));
-                $property = Properties::where('id', $pro["property_id"])->where('company_id', auth('api')->user()->company_id)->with('fetchTenant')->first();
-                // return $property;
-                $body = "I hope this email finds you well. As part of our ongoing commitment to maintaining the property at " . $property->reference . "in excellent condition, we would like to schedule a routine inspection of the premises. This is an email to remind you that a inspection has been scheduled on " . date('F Y', strtotime($request['ins_date'])) . ".\n";
-
-                $inspectionDate = $request->inspection_date;
-                $startTime = date('h:i a', strtotime($request->start_time));
-                $endTime = date('h:i a', strtotime($request->end_time));
-                $duration = $request->duration;
-
-                $inspectionDetails = "Date: " . date('F Y', strtotime($request['ins_date'])) . "\nStart Time: " . $startTime . "\nEnd Time: " . $endTime . "\nDuration: " . $duration;
-
-                $body .= $inspectionDetails;
-                // if (isset($property->fetchTenant->email)) {
-                //     $tenantEmail =  $property->fetchTenant->email;
-
-                //     $tenantEmail =  $property->fetchTenant->email;
-                //     // return $tenantEmail;
-                //     $messageWithMail = new MessageWithMail();
-                //     $messageWithMail->property_id = $pro["property_id"];
-                //     $messageWithMail->to         =  $tenantEmail;
-                //     $messageWithMail->from       = auth('api')->user()->email;
-                //     $messageWithMail->subject    = "Inspection Reminder form MyDay";
-                //     $messageWithMail->body       = $body;
-                //     $messageWithMail->status     = $request->status ? $request->status : "Sent";
-                //     $messageWithMail->type       =  "email";
-                //     $messageWithMail->inspection_id   = $inspection->id;
-                //     $messageWithMail->company_id = auth('api')->user()->company_id;
-
-                //     $messageWithMail->save();
-                //     $data = [
-                //         'mail_id' =>  $messageWithMail['id'],
-                //         'property_id' => $pro["property_id"],
-                //         'to' => $tenantEmail,
-                //         'from' => auth('api')->user()->email,
-                //         'subject' => "Inspection Notice for " . $property->reference . "from Myday",
-                //         'body' => $body,
-                //         'status' => "Sent",
-                //         'company_id' => auth('api')->user()->company_id,
-
-
-                //     ];
-
-                //     $request2 = new \Illuminate\Http\Request();
-                //     $request2->replace($data);
-                //     try {
-                //         Mail::to($tenantEmail)->send(new Messsage($request2));
-                //     } catch (\Exception $e) {
-                //         // Log or handle the exception
-                //         \Log::error('Error sending email: ' . $e->getMessage());
-                //     }
-                //     // Mail::to($tenantEmail)->send(new Messsage($request2));
-                // }
-
+            
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
+                $activityMessageTrigger->trigger();
             }
 
             return response()->json([['data' => [], 'message' => 'successfull']], 200);
@@ -335,11 +253,10 @@ class MasterScheduleController extends Controller
     public function edit(Request $request)
     {
         try {
-            // return $request->schedule_id;
-            $master = MasterSchedule::where('id', $request->schedule_id)->update([
+            MasterSchedule::where('id', $request->schedule_id)->update([
                 'manager_id' => $request->manager_id,
                 'date' => $request->ins_date,
-                'duration' =>$request->duration,
+                'duration' => $request->duration,
                 'start_time' => $request->start_time,
                 'properties' => $request->properties,
                 'company_id' => auth('api')->user()->company_id,
@@ -352,7 +269,6 @@ class MasterScheduleController extends Controller
                 'state' => $request->state,
                 'country' => $request->country,
             ]);
-
 
             InspectionSchedule::where('masterSchedule_id', $request->schedule_id)->delete();
             $ins = Inspection::where('master_Schedule_id', $request->schedule_id);
@@ -370,7 +286,6 @@ class MasterScheduleController extends Controller
             $ins->delete();
 
             foreach ($request->property as $pro) {
-
                 $attributeNames1 = array(
                     'masterSchedule_id' => $request->schedule_id,
                     'property_id' => $pro["property_id"],
@@ -378,7 +293,6 @@ class MasterScheduleController extends Controller
                     'schedule_time' => $pro["schedule_time"],
                     'lat' => $pro["lat"],
                     'long' => $pro["long"],
-
                 );
                 $property = Properties::where('id', $pro["property_id"]);
                 $property_get = $property->first();
@@ -389,14 +303,14 @@ class MasterScheduleController extends Controller
                     $date_week = strtotime($pro["schedule_date"]);
                     $date_week = strtotime($day_str, $date_week);
                     $date_week = date('Y-m-d', $date_week);
-                    $propertyUp = $property->update(["routine_inspection_due_date" => $date_week]);
+                    $property->update(["routine_inspection_due_date" => $date_week]);
                 } else if ($property_get->routine_inspections_frequency_type == "Monthly") {
                     $day_count = $property_get->routine_inspections_frequency;
                     $day_str = "+" . ($day_count * 30) . " day";
                     $date_month = strtotime($pro["schedule_date"]);
                     $date_month = strtotime($day_str, $date_month);
                     $date_month = date('Y-m-d', $date_month);
-                    $propertyUp = $property->update(["routine_inspection_due_date" => $date_month]);
+                    $property->update(["routine_inspection_due_date" => $date_month]);
                 }
                 InspectionSchedule::create($attributeNames1);
                 $endTime = strtotime("+0 minutes", strtotime($pro["schedule_time"] . ":00"));
@@ -414,13 +328,11 @@ class MasterScheduleController extends Controller
                     'level'             => "null",
                     'status'            => "Scheduled",
                     'master_schedule_id' => $request->schedule_id,
-
                 );
+
                 $inspection = Inspection::create($attributeNames);
-
-                $message_action_name = "Inspections";
-
-                $messsage_trigger_point = 'Scheduled';
+                $message_action_name = "Inspections All";
+                $messsage_trigger_point = 'Rescheduled';
 
                 $data = [
                     "property_id" => $pro["property_id"],
@@ -428,13 +340,9 @@ class MasterScheduleController extends Controller
                     "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
                     "tenant_contact_id" => $request->tenant_contact_id,
                     "id" => $inspection->id,
-
-
                 ];
-                // $PropertyActivity=PropertyActivity::where()->delete();
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
+                $activityMessageTrigger->trigger();
             }
             return response()->json([['data' => [], 'message' => 'successfull']], 200);
         } catch (\Exception $ex) {
@@ -448,9 +356,7 @@ class MasterScheduleController extends Controller
      * @param int $id
      * @return Renderable
      */
-    public function update(Request $request, $id)
-    {
-    }
+    public function update(Request $request, $id) {}
 
     /**
      * Remove the specified resource from storage.

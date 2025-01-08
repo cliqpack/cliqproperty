@@ -1,7 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Route;
+use Modules\Messages\Http\Controllers\LetterTemplateController;
+use Modules\Messages\Http\Controllers\MessageWithLetterController;
 
 // use Modules\Messages\Http\Controllers\MailForTenantController;
 // use Modules\Messages\Http\Controllers\MessageWithMailController;
@@ -74,5 +76,50 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/message-outbox-company', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'outbox_company']);
     Route::get('/message-outbox-company-ssr', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'outbox_company_ssr']);
 
-    Route::resource('/mail/attachment',AttachmentController::class);
+    Route::resource('/mail/attachment', AttachmentController::class);
+
+
+    // Fetch all users for composing email
+    Route::post('/message/recipients', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'getAllRecipients']);
+
+    // Forward an email
+    Route::post('/message/email/forward', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'emailForward']);
+
+    // Dismiss undelivered email
+    Route::post('/message/email/dismiss', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'emailDismiss']);
+
+    // Template for letter
+    Route::get('letter/templates', [LetterTemplateController::class, 'index']);
+    Route::post('letter/templates', [LetterTemplateController::class, 'store']);
+    Route::get('letter/templates/{id}', [LetterTemplateController::class, 'show']);
+    Route::put('letter/templates/{id}', [LetterTemplateController::class, 'update']);
+    Route::post('letter/templates/destroy-multiple', [LetterTemplateController::class, 'destroyMultiple']);
+
+    // Sent List Route
+    Route::get('/letters/sent', [MessageWithLetterController::class, 'sentList']);
+
+    // Outbox List Route
+    Route::get('/letters/outbox', [MessageWithLetterController::class, 'outboxList']);
+
+    // Details Route
+    Route::get('/letters/{id}', [MessageWithLetterController::class, 'details']);
+
+    // Update Route
+    Route::put('/letters/{id}', [MessageWithLetterController::class, 'update']);
+
+    // Download Route
+    Route::get('/letters/{id}/download', [MessageWithLetterController::class, 'download']);
+
+    // Print Route
+    Route::get('/letters/{id}/print', [MessageWithLetterController::class, 'print']);
+
+    // Delete multiple Route
+    Route::post('/letters/delete-multiple', [MessageWithLetterController::class, 'deleteMultiple']);
+
+    Route::post('/letters/send-multiple', [MessageWithLetterController::class, 'sendMultiple']);
+
+    //Convert email attachment to bill
+    Route::post('/convert-attachment-to-bill', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'convertAttachmentToBill']);
+
+    Route::get('message-actions/{actionName}', [Modules\Messages\Http\Controllers\MessageWithMailController::class, 'getMergeFieldsByActionName']);
 });

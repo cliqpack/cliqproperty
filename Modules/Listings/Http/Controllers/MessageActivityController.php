@@ -37,34 +37,38 @@ class MessageActivityController extends Controller
     public function messagesMailTemplatefilter(Request $request)
     {
         try {
-            $template = [];
+            // Initialize the query with base conditions
+            $template = MailTemplate::query();
 
-            $template = MailTemplate::where('message_action_name', "listing");
+            // Check if the request contains a listing type (rental or sale)
+            if ($request->has('type')) {
+                $listingType = $request->input('type');
 
+                // Add condition based on the listing type
+                if ($listingType === 'rental') {
+                    $template = $template->where('message_action_name', 'Rental Listing');
+                } elseif ($listingType === 'sale') {
+                    $template = $template->where('message_action_name', 'Sale Listing');
+                }
+            }
+
+            // Additional filter for 'message_trigger_to' if provided
             if ($request->trigger_to2) {
                 $template = $template->whereIn('message_trigger_to', $request->trigger_to2);
             }
 
+            // Filter by subject if a query is provided
             if ($request->query) {
                 $query = $request->input('query');
-
                 $template = $template->where('subject', 'like', "%$query%");
             }
 
+            // Execute the query to get the filtered templates
             $template = $template->get();
-            // if (!empty($request->query)) {
-            //     $query = $request->input('query');
-            //     $template = MailTemplate::where('message_action_name', 'listing')->whereIn('message_trigger_to', $request->trigger_to2)->where('subject', 'like', "%$query%")->get();
-            // } else {
-            //     $template = MailTemplate::whereIn('message_trigger_to', $request->trigger_to2)->where('message_action_name', "listing")->get();
-            // }
-
-
 
             return response()->json([
-
                 'data' => $template,
-                'message' => 'successfully show'
+                'message' => 'Successfully fetched templates'
             ]);
         } catch (\Throwable $th) {
             return response()->json([
@@ -76,54 +80,39 @@ class MessageActivityController extends Controller
         }
     }
 
+
     public function TemplateActivityStore(Request $request)
     {
         try {
-
             $attributesNames = array(
                 'template_id' => $request->template_id,
                 'listing_id' => $request->listing_id,
-
             );
             $validator = Validator::make($attributesNames, []);
 
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-
-
                 $listing = listing::where('id', $request->listing_id)->with('properties:id,reference')->first();
-                // $title =  $listing->listingPropetyDetails['title'];
 
                 $listingId = $request->listing_id;
-
                 $ownerId = $listing->properties->owner_id;
-
                 $tenantId = $listing->properties->tenant_id;
-
                 $propertyId = $listing->property_id;
 
                 $mailtemplate = MailTemplate::where('id', $request->template_id)->where('company_id', auth('api')->user()->company_id)->first();
                 $templateId = $mailtemplate->id;
 
-
-                $message_action_name = "Listing";
-                // $messsage_trigger_point = 'Listing';
+                $message_action_name = $mailtemplate->message_action_name;
                 $data = [
-
-
-                    "template_id" => $templateId,
-                    "property_id" => $propertyId,
-                    "tenant_contact_id" =>  $tenantId,
-                    "owner_contact_id" =>  $ownerId,
                     "id" => $listingId,
-                    'status' => $request->subject
+                    "property_id" => $propertyId,
+                    "tenant_contact_id" => $tenantId,
+                    "owner_contact_id" => $ownerId,
+                    'template_id' => $templateId,
                 ];
-
-                $activityMessageTrigger = new MessageAndSmsActivityController($message_action_name, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
-
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', null, $data, "email");
+                $activityMessageTrigger->trigger();
 
                 return response()->json(['message' => 'successfull'], 200);
             }

@@ -18,7 +18,7 @@ class MessagesDatabaseSeeder extends Seeder
         $this->call(MessageActionNameTableSeeder::class);
         $this->call(MessageActionTriggerTableSeeder::class);
         $this->call(MessageActionTriggerPointTableSeeder::class);
-
+        $this->call(MessageActionSeederTableSeeder::class);
         // $this->call("OthersTableSeeder");
     }
 }

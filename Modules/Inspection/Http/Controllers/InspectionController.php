@@ -16,9 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Modules\Accounts\Http\Controllers\TriggerBillController;
-use Modules\Accounts\Http\Controllers\TriggerFeeBasedBillController;
 use Modules\Accounts\Http\Controllers\TriggerPropertyFeeBasedBillController;
-use Modules\Contacts\Entities\OwnerFolio;
 use Modules\Contacts\Entities\TenantContact;
 use Modules\Inspection\Entities\EntryExitDescription;
 use Modules\Inspection\Entities\Inspection;
@@ -35,14 +33,10 @@ use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 use Modules\Properties\Entities\Properties;
 use Modules\Properties\Entities\PropertyActivity;
 use Modules\Properties\Entities\PropertyActivityEmail;
-use Illuminate\Support\Facades\Notification;
-use Modules\Inspection\Notifications\InspectionNotification;
-use Modules\Notification\Notifications\NotifyAdminOfNewComment;
 use Modules\Settings\Entities\SettingBrandStatement;
 use Modules\Settings\Entities\CompanySetting;
 use Modules\Settings\Entities\BrandSettingLogo;
 use stdClass;
-use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Modules\Contacts\Entities\TenantFolio;
 use Modules\Properties\Entities\PropertyRoom;
 
@@ -156,7 +150,6 @@ class InspectionController extends Controller
 
     public function inspected_ssr(Request $request)
     {
-
         try {
             $page_qty = $request->sizePerPage;
             $inspection = [];
@@ -243,8 +236,6 @@ class InspectionController extends Controller
      */
     public function store(Request $request)
     {
-
-        // return "heloo";
         try {
             $attributeNames = array(
                 'property_id' => $request->property_id,
@@ -258,8 +249,8 @@ class InspectionController extends Controller
                 'company_id' => auth('api')->user()->company_id,
                 'level' => "null",
                 'status' => "Scheduled",
-
             );
+
             $validator = Validator::make($attributeNames, [
                 'property_id' => 'required',
                 'inspection_type' => 'required',
@@ -269,48 +260,40 @@ class InspectionController extends Controller
                 'summery' => 'required',
                 'manager_id' => 'required',
             ]);
+
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-
                 $id = null;
                 DB::transaction(function () use (&$id, $attributeNames, $request) {
                     $inspection = Inspection::create($attributeNames);
-                    $message_action_name = "Inspections";
 
-                    $messsage_trigger_point = $request->inspection_type;
+                    /* Start: Setup and trigger activity message */
+                    if ($request->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($request->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
+
+                    $messsage_trigger_point = "Scheduled";
                     $data = [
                         "property_id" => $request->property_id,
                         "date" => $request->date,
                         "start_time" => date('h:i:s a', strtotime($request->start_time)),
                         "tenant_contact_id" => $request->tenant_contact_id,
                         "id" => $inspection->id
-
                     ];
+
                     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                    /* End: Setup and trigger activity message */
 
 
-                    $value = $activityMessageTrigger->trigger();
                     $tenant_contact = TenantContact::where('id', $request->tenant_contact_id)->first();
                     // $properties = Properties::where('id', $request->property_id)->first();
 
                     $id = $inspection->id;
-                    // $notify = (object) [
-                    //     "inspection_date" => $request->inspection_date,
-                    //     "inspection_type" => $request->inspection_type,
-                    //     "start_time" => $request->start_time,
-                    //     "end_time" => $request->end_time,
-                    //     "property_id" => $request->property_id,
-                    //     "inspection_id" => $inspection->id,
-                    //     "manager_id" => $request->manager_id,
-                    //     "company_id" => auth('api')->user()->company_id,
 
-                    //     "tenant_contact_id" => $request->tenant_contact_id,
-                    // ];
-                    // // return $notify;
-                    // $admin = TenantContact::where('id',  $request->tenant_contact_id)->firstOrFail();
-
-                    // Notification::send($admin, new InspectionNotification($notify));
                     $inspectionDate = date('F Y', strtotime($request->inspection_date));
                     $property = Properties::where('id', $request->property_id)->where('company_id', auth('api')->user()->company_id)->with('fetchTenant')->first();
                     // return $property;
@@ -333,7 +316,7 @@ class InspectionController extends Controller
                         $messageWithMail->property_id = $request->property_id;
                         $messageWithMail->to = $tenantEmail;
                         $messageWithMail->from = auth('api')->user()->email;
-                        $messageWithMail->subject = "Inspection Reminder form CliqProperty";
+                        $messageWithMail->subject = "Inspection Reminder form MyDay";
                         $messageWithMail->body = $body;
                         $messageWithMail->status = $request->status ? $request->status : "Sent";
                         $messageWithMail->type = "email";
@@ -346,7 +329,7 @@ class InspectionController extends Controller
                             'property_id' => $request->property_id,
                             'to' => $tenantEmail,
                             'from' => auth('api')->user()->email,
-                            'subject' => "Inspection Notice for " . $property->reference . "from CliqProperty",
+                            'subject' => "Inspection Notice for " . $property->reference . "from Myday",
                             'body' => $body,
                             'status' => "Sent",
                             'company_id' => auth('api')->user()->company_id,
@@ -356,7 +339,7 @@ class InspectionController extends Controller
 
                         $request2 = new \Illuminate\Http\Request();
                         $request2->replace($data);
-                        // Mail::to($tenantEmail)->send(new Messsage($request2));
+                        Mail::to($tenantEmail)->send(new Messsage($request2));
                     }
 
                     if ($request->inspection_type == "Routine" && $tenant_contact) {
@@ -437,8 +420,8 @@ class InspectionController extends Controller
                 'duration' => $request->duration,
                 'summery' => $request->summery,
                 'manager_id' => $request->manager_id,
-
             );
+
             $validator = Validator::make($attributeNames, [
                 'inspection_type' => 'required',
                 'start_time' => 'required',
@@ -447,10 +430,18 @@ class InspectionController extends Controller
                 'summery' => 'required',
                 'manager_id' => 'required'
             ]);
+
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
+                // Fetch the current inspection record
                 $inspection = Inspection::findOrFail($id);
+
+                // Check if start_time or end_time has changed
+                $startTimeChanged = $inspection->start_time != $request->start_time;
+                $endTimeChanged = $inspection->end_time != $request->end_time;
+
+                // Update the inspection record
                 $inspection->update([
                     'inspection_type' => $request->inspection_type,
                     'inspection_date' => $request->inspection_date,
@@ -460,6 +451,27 @@ class InspectionController extends Controller
                     'summery' => $request->summery,
                     'manager_id' => $request->manager_id,
                 ]);
+
+                /* Start: Setup and trigger activity message */
+                // Trigger only if start_time or end_time has changed
+                if ($startTimeChanged || $endTimeChanged) {
+                    if ($inspection->inspection_type === 'Routine') {
+                        $message_action_name = "Inspections Routine";
+                    } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                        $message_action_name = "Inspections All";
+                    }
+
+                    $messsage_trigger_point = "Rescheduled";
+                    $data = [
+                        "property_id" => $inspection->property_id,
+                        "id" => $inspection->id
+                    ];
+
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                }
+                /* End: Setup and trigger activity message */
+
                 return response()->json([
                     'message' => 'successful',
                     'status' => "success",
@@ -469,6 +481,7 @@ class InspectionController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
 
     /**
      * Remove the specified resource from storage.
@@ -911,26 +924,20 @@ class InspectionController extends Controller
 
     public function inspectionComplete($id)
     {
-
         try {
-            // return "heloo";
             $data = [];
             $inspection = Inspection::with('property')->where('id', $id)->first();
             $ownerEmail = $inspection->property->owner_email;
-            // return $ownerEmail;
 
             $language = User::where('email', $ownerEmail)->pluck('language_code')->first();
-
 
             $brandStatement = SettingBrandStatement::where('company_id', auth('api')->user()->company_id)->first();
             $brandLogo = BrandSettingLogo::where('company_id', auth('api')->user()->company_id)->first();
             $user = User::where('company_id', auth('api')->user()->company_id)->first();
             $company = CompanySetting::where('company_id', auth('api')->user()->company_id)->first();
 
-
             if ($inspection->inspection_type === 'Routine') {
                 $inspectionDetails = InspectionDetails::where('inspection_id', $id)->with(['inspection.inspection_routine_overview', 'room', 'room_image'])->get();
-
                 foreach ($inspectionDetails as $key => $value) {
                     $routine_description = $value['routine_description'];
                     $summery = $value['inspection']['summery'];
@@ -948,7 +955,6 @@ class InspectionController extends Controller
                         $pushImage = new stdClass();
                         $image_path = $img->image_path;
                         $pushImage = $image_path;
-                        // $image = $image_path;
                         array_push($image, $pushImage);
                     }
                     $pushObject = [
@@ -1383,14 +1389,18 @@ class InspectionController extends Controller
 
                 $inspection->update();
 
-
-
                 PropertyActivity::where('inspection_id', $id)->update([
                     'status' => 'Completed'
                 ]);
-                $message_action_name = "Inspections";
 
-                $messsage_trigger_point = 'Completed';
+                /* Start: Setup and trigger activity message */
+                if ($inspection->inspection_type === 'Routine') {
+                    $message_action_name = "Inspections Routine";
+                } elseif (in_array($inspection->inspection_type, ['Entry', 'Exit'])) {
+                    $message_action_name = "Inspections All";
+                }
+
+                $messsage_trigger_point = "Closed";
                 $data = [
                     "id" => $id,
                     'property_id' => $property_id,
@@ -1399,7 +1409,9 @@ class InspectionController extends Controller
                 ];
 
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-                $value = $activityMessageTrigger->trigger();
+                $activityMessageTrigger->trigger();
+                /* End: Setup and trigger activity message */
+
 
                 return response()->json(['message' => 'Successful'], 200);
             });

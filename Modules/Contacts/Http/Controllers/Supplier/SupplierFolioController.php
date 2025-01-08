@@ -17,7 +17,10 @@ use Modules\Accounts\Entities\ReceiptDetails;
 use Modules\Accounts\Entities\Withdrawal;
 use Modules\Accounts\Http\Controllers\Withdrawal\WithdrawalStoreController;
 use Modules\Contacts\Entities\SupplierDetails;
+use Modules\Contacts\Entities\SupplierContact;
+use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 use stdClass;
+use Log;
 
 class SupplierFolioController extends Controller
 {
@@ -52,6 +55,15 @@ class SupplierFolioController extends Controller
     }
 
     public function supplier_folio_info($supplier_folio_id)
+    {
+        try {
+            $supplier_folio = SupplierDetails::where('id', $supplier_folio_id)->where('archive', false)->where('company_id', auth('api')->user()->company_id)->with('supplierContact')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->first();
+            return response()->json(['data' => $supplier_folio, 'message' => 'Successfull'], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
+        }
+    }
+    public function supplier_folio_info_with_archive($supplier_folio_id)
     {
         try {
             $supplier_folio = SupplierDetails::where('id', $supplier_folio_id)->where('company_id', auth('api')->user()->company_id)->with('supplierContact')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->first();
@@ -270,6 +282,19 @@ class SupplierFolioController extends Controller
                             }
                         }
                     }
+                    /* Start: Setup and trigger activity message */
+                    $message_action_name = "Supplier Statement";
+                    $messsage_trigger_point = 'Disbursed';
+                    $data = [
+                        "id" => $disbursement->id,
+                        "property_id" => null,
+                        "status" => "Disbursed",
+                        "folio_type" => "Supplier",
+                        "folio_id" => $Supplierdisbursement->supplier_contact_id
+                    ];
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                    /* End: Setup and trigger activity message */
                 }
             });
             return response()->json([
@@ -278,6 +303,37 @@ class SupplierFolioController extends Controller
             ], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
+        }
+    }
+
+    public function supplier_due_check_and_archive($id)
+    {
+        try {
+            $supplierFolio = SupplierDetails::where('id', $id)->first();
+            $balance = floatval($supplierFolio->opening) + floatval($supplierFolio->balance);
+            if ($balance > 0) {
+                return response()->json(['message' => 'Your Balance is not zero, please clear amount $' . $balance, "staus" => '0', 'opening' => $balance], 200);
+            } else {
+                SupplierContact::where('id', $supplierFolio->supplier_contact_id)->update(['status' => false]);
+                SupplierDetails::where('id', $id)->update(['status' => false, 'archive' => true]);
+                return response()->json(['message' => 'successfull', "staus" => '1', 'opening' => '0'], 200);
+            }
+        } catch (\Throwable $th) {
+            return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
+        }
+    }
+
+    public function restoreSupplier($folioId)
+    {
+        try {
+            DB::transaction(function () use ($folioId) {
+                $supplierFolio = SupplierDetails::where('id', $folioId)->first();
+                SupplierContact::where('id', $supplierFolio->supplier_contact_id)->update(['status' => true]);
+                SupplierDetails::where('id', $folioId)->update(['status' => true, 'archive' => false]);
+            });
+            return response()->json(['message' => "Successful", "status" => 'Success'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(['status' => 'false', 'error' => ['error'], 'message' => $th->getMessage(), "data" => []], 500);
         }
     }
 }

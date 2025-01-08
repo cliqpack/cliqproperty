@@ -10,6 +10,7 @@ use Modules\Contacts\Entities\TenantContact;
 use Modules\Properties\Entities\Properties;
 use Modules\Accounts\Entities\ReceiptDetails;
 use Modules\Contacts\Entities\OwnerFolio;
+use Modules\Contacts\Entities\RentReceiptDetail;
 use Modules\Contacts\Entities\SupplierDetails;
 use Modules\Contacts\Entities\TenantFolio;
 
@@ -82,5 +83,8 @@ class Receipt extends Model
     }
     public function supplierFolio () {
         return $this->hasOne(SupplierDetails::class, 'id', 'supplier_folio_id');
+    }
+    public function RentManagement () {
+        return $this->hasMany(RentReceiptDetail::class, 'receipt_id', 'id');
     }
 }

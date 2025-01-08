@@ -27,7 +27,7 @@ class SupplierController extends Controller
     public function index()
     {
         try {
-            $supplier = SupplierContact::with('supplierDetails:id,supplier_contact_id,folio_code,account_id,priority')->where('company_id', auth('api')->user()->company_id)->get();
+            $supplier = SupplierContact::where('status', true)->with('supplierDetails:id,supplier_contact_id,folio_code,account_id,priority')->where('company_id', auth('api')->user()->company_id)->get();
             return response()->json(['data' => $supplier, 'status' => "Success"], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -175,15 +175,15 @@ class SupplierController extends Controller
                                 $contact_details->email                 = $contact['email'];
                                 $contact_details->primary               = $contact['primary'];
 
-                                if ($contact['email1_status']=='1') {
+                                if ($contact['email1_status'] == '1') {
                                     $contact_details->email1                = $contact['email1'];
                                     $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
                                 }
-                                if ($contact['email2_status']=='1') {
+                                if ($contact['email2_status'] == '1') {
                                     $contact_details->email2                = $contact['email2'];
                                     $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
                                 }
-                                if ($contact['email3_status']=='1') {
+                                if ($contact['email3_status'] == '1') {
                                     $contact_details->email3                = $contact['email3'];
                                     $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
                                 }
@@ -266,15 +266,15 @@ class SupplierController extends Controller
                                 $contact_details->email                 = $contact['email'];
                                 $contact_details->primary               = $contact['primary'];
 
-                                if ($contact['email1_status']=='1') {
+                                if ($contact['email1_status'] == '1') {
                                     $contact_details->email1                = $contact['email1'];
                                     $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
                                 }
-                                if ($contact['email2_status']=='1') {
+                                if ($contact['email2_status'] == '1') {
                                     $contact_details->email2                = $contact['email2'];
                                     $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
                                 }
-                                if ($contact['email3_status']=='1') {
+                                if ($contact['email3_status'] == '1') {
                                     $contact_details->email3                = $contact['email3'];
                                     $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
                                 }
@@ -499,15 +499,15 @@ class SupplierController extends Controller
                             $contact_details->email                 = $contact['email'];
                             $contact_details->primary               = $contact['primary'];
 
-                            if ($contact['email1_status']=='1') {
+                            if ($contact['email1_status'] == '1') {
                                 $contact_details->email1                = $contact['email1'];
                                 $contact_details->email1_send_type      = $contact['email1_send_type']['value'];
                             }
-                            if ($contact['email2_status']=='1') {
+                            if ($contact['email2_status'] == '1') {
                                 $contact_details->email2                = $contact['email2'];
                                 $contact_details->email2_send_type      = $contact['email2_send_type']['value'];
                             }
-                            if ($contact['email3_status']=='1') {
+                            if ($contact['email3_status'] == '1') {
                                 $contact_details->email3                = $contact['email3'];
                                 $contact_details->email3_send_type      = $contact['email3_send_type']['value'];
                             }
@@ -680,10 +680,19 @@ class SupplierController extends Controller
         }
     }
 
+    /**
+     * This function retrieves a list of supplier contacts for the currently authenticated user's company.
+     * 
+     * The function performs the following operations:
+     * Returns the list of supplier contacts along with a success message in a JSON response with a 200 status code.
+     * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @return \Illuminate\Http\JsonResponse The response containing the list of supplier contacts or an error message.
+     */
     public function supplier_contact_list()
     {
         try {
-            $supplierContactList = SupplierContact::where('company_id', auth('api')->user()->company_id)->with('supplierDetails:id,supplier_contact_id,folio_code,account_id,priority', 'supplierDetails.supplierAccount')->get();
+            $supplierContactList = SupplierContact::where('status', true)->where('company_id', auth('api')->user()->company_id)->with('supplierDetails:id,supplier_contact_id,folio_code,account_id,priority', 'supplierDetails.supplierAccount')->get();
             return response()->json(['data' => $supplierContactList, 'message' => 'Successful'], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);

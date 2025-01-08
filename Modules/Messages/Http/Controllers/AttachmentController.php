@@ -36,29 +36,37 @@ class AttachmentController extends Controller
      */
     public function store(Request $request)
     {
+        // Validate attachment array
+        $request->validate([
+            'image' => 'required|array',
+            'image.*' => 'file|mimes:pdf,xls,xlsx,doc,docx,jpg,jpeg,png,gif',
+        ], [
+            'image.required' => 'Attachments are required.',
+            'image.array' => 'Attachments must be an array.',
+            'image.*.mimes' => 'Each attachment must be a file of type: pdf, xls, xlsx, doc, docx, jpg, jpeg, png, gif.',
+        ]);
+        
         try {
-            $data =[];
-            // DB::transaction(function () use ($request,$data) {
-                if ($request->file('image')) {
-                    foreach ($request->file('image') as $file) {
-                        $imageUpload = new Attachment();
+            $data = [];
+            if ($request->file('image')) {
+                foreach ($request->file('image') as $file) {
+                    $imageUpload = new Attachment();
 
-                        $filename = $file->getClientOriginalName();
-                        $fileSize = $file->getSize();
-                        $extension = $file->getClientOriginalExtension();
-                        $path = config('app.asset_s') . '/Document';
-                        $filename_s3 = Storage::disk('s3')->put($path, $file);
+                    $filename = $file->getClientOriginalName();
+                    $fileSize = $file->getSize();
+                    $extension = $file->getClientOriginalExtension();
+                    $path = config('app.asset_s') . '/Document';
+                    $filename_s3 = Storage::disk('s3')->put($path, $file);
 
-                        $imageUpload->doc_path = $filename_s3;
-                        $imageUpload->name = $filename;
-                        $imageUpload->file_size = $fileSize;
-                        $imageUpload->file_type=$extension;
-                        $imageUpload->save();
-                        $single=['id'=>$imageUpload->id,'path'=>$filename_s3,'name'=>$imageUpload->name,'file_size'=>$imageUpload->file_size];
-                        array_push($data,$single);
-                    }
+                    $imageUpload->doc_path = $filename_s3;
+                    $imageUpload->name = $filename;
+                    $imageUpload->file_size = $fileSize;
+                    $imageUpload->file_type = $extension;
+                    $imageUpload->save();
+                    $single = ['id' => $imageUpload->id, 'path' => $filename_s3, 'name' => $imageUpload->name, 'file_size' => $imageUpload->file_size];
+                    array_push($data, $single);
                 }
-            // });
+            }
             return response()->json([
                 'data' => $data,
                 'message' => 'Successful'

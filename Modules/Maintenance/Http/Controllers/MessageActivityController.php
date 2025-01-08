@@ -38,35 +38,18 @@ class MessageActivityController extends Controller
     {
         try {
             $template = [];
-            // if (!empty($request->query)) {
-            //     $query = $request->input('query');
-            //     $template = MailTemplate::where('message_action_name', 'Maintenance')->whereIn('message_trigger_to', $request->trigger_to2)->where('subject', 'like', "%$query%")->get();
-            // } else {
-            //     $template = MailTemplate::whereIn('message_trigger_to', $request->trigger_to2)->where('message_action_name', "Maintenance")->get();
-
-            // }
-
-
-            $template = MailTemplate::where('message_action_name', "Maintenance");
+            $template = MailTemplate::where('message_action_name', "Job");
 
             if ($request->trigger_to2) {
                 $template = $template->whereIn('message_trigger_to', $request->trigger_to2);
             }
-
             if ($request->query) {
                 $query = $request->input('query');
-
                 $template = $template->where('subject', 'like', "%$query%");
             }
-
             $template = $template->get();
 
-
-
-
-
             return response()->json([
-                // 'property' => $properties,
                 'data' => $template,
                 'message' => 'successfully show'
             ]);
@@ -86,7 +69,6 @@ class MessageActivityController extends Controller
             $attributesNames = array(
                 'template_id' => $request->template_id,
                 'maintenance_id' => $request->maintenance_id,
-
             );
             $validator = Validator::make($attributesNames, []);
 
@@ -94,30 +76,16 @@ class MessageActivityController extends Controller
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
                 $maintenance = Maintenance::where('id', $request->maintenance_id)->with('getMaintenanceBySupplierIdAttribute')->first();
-                
-
-                $propertyId = $maintenance->property_id ? $maintenance->property_id : null;
-                $tenantId =  $maintenance->tenant_id;
-                $mailtemplate = MailTemplate::where('id', $request->template_id)->where('company_id', auth('api')->user()->company_id)->first();
-                $templateId = $mailtemplate->id;
-
-
-                $message_action_name = "Maintenance";
-                // $messsage_trigger_point = 'sms';
+            
+                $message_action_name = "Job";
                 $data = [
-
-                    "property_id" => $propertyId,
-                    "tenant_contact_id" =>  $tenantId,
-                    // "owner_contact_id" =>  $properties->owner_id,
-                    "id" => $request->maintenance_id,
-                    "template_id" => $templateId
-                    // 'status' => $request->subject
+                    "id" => $maintenance->id,
+                    "property_id" => $maintenance->property_id,
+                    "tenant_contact_id" => $request->tenant_id,
+                    'template_id' => $request->template_id,
                 ];
-
-                $activityMessageTrigger = new MessageAndSmsActivityController($message_action_name, $data, "message");
-               
-                return $value = $activityMessageTrigger->trigger();
-                
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', null, $data, "email");
+                $activityMessageTrigger->trigger();
 
                 return response()->json(['message' => 'successfull'], 200);
             }

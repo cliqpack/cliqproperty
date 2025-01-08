@@ -53,7 +53,7 @@ class MessageWithMail extends Model
 
     public function job()
     {
-        return $this->hasOne(Maintenance::class, 'id','job_id');
+        return $this->hasOne(Maintenance::class, 'id', 'job_id');
     }
 
     public function inspection()

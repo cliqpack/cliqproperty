@@ -17,7 +17,6 @@ class MessageActivityController extends Controller
     public function messagesMailTemplateShow()
     {
         try {
-            // return "hello";
             $mailtemplates = MailTemplate::whereIn('message_action_name', ['Inspections', 'Routine'])
                 ->where('company_id', auth('api')->user()->company_id)
                 ->get();
@@ -43,9 +42,17 @@ class MessageActivityController extends Controller
             $template = [];
             if (!empty($request->query)) {
                 $query = $request->input('query');
-                $template = MailTemplate::where('message_action_name', $request->data)->whereIn('message_trigger_to', $request->trigger_to2)->where('subject', 'like', "%$query%")->get();
+
+                $template = MailTemplate::where('message_action_name', $request->data)
+                    ->whereIn('message_trigger_to', $request->trigger_to2)
+                    ->where('subject', 'like', "%$query%")
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->get();
             } else {
-                $template = MailTemplate::whereIn('message_trigger_to', $request->trigger_to2)->whereIn('message_action_name', ['Inspections', 'Routine'])->where('company_id', auth('api')->user()->company_id)->get();
+                $template = MailTemplate::where('message_action_name', $request->data)
+                    ->whereIn('message_trigger_to', $request->trigger_to2)
+                    ->where('company_id', auth('api')->user()->company_id)
+                    ->get();
             }
 
             return response()->json([
@@ -66,11 +73,9 @@ class MessageActivityController extends Controller
     public function TemplateActivityStore(Request $request)
     {
         try {
-
             $attributesNames = array(
                 'template_id' => $request->template_id,
                 'inspection_id' => $request->inspection_id,
-
             );
             $validator = Validator::make($attributesNames, [
                 'message_id',
@@ -80,40 +85,26 @@ class MessageActivityController extends Controller
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-
-
                 $inspection = Inspection::where('id', $request->inspection_id)->with('property:id,reference')->first();
-                $inspectionId = $request->inspection_id;
 
+                $inspectionId = $request->inspection_id;
                 $ownerId = $inspection->property->owner_id;
                 $tenantId = $inspection->property->tenant_id;
-
                 $propertyId = $inspection->property_id;
-
+                
                 $mailtemplate = MailTemplate::where('id', $request->template_id)->where('company_id', auth('api')->user()->company_id)->first();
-                // return $mailtemplate;
                 $templateId = $mailtemplate->id;
 
-
-                $message_action_name = $mailtemplate->message_action_name ?$mailtemplate->message_action_name :"Inspections";
-                // return $message_action_name;
-                // $messsage_trigger_point = 'Routine';
+                $message_action_name = $mailtemplate->message_action_name;
                 $data = [
-
-
-                    "template_id" => $templateId,
-                    "property_id" => $propertyId,
-                    "tenant_contact_id" =>  $tenantId,
-                    "owner_contact_id" =>  $ownerId,
                     "id" => $inspectionId,
-                    'status' => $request->subject
+                    "property_id" => $propertyId,
+                    "tenant_contact_id" => $tenantId,
+                    "owner_contact_id" => $ownerId,
+                    'template_id' => $templateId,
                 ];
-
-                $activityMessageTrigger = new MessageAndSmsActivityController($message_action_name, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
-                return $value;
-
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', null, $data, "email");
+                $activityMessageTrigger->trigger();
 
                 return response()->json(['message' => 'successfull'], 200);
             }

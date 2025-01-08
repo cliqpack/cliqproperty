@@ -9,7 +9,10 @@ class PropertiesLabel extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = [
+        'property_id',
+        'labels'
+    ];
 
     protected static function newFactory()
     {

@@ -8,7 +8,6 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-
 use Modules\Inspection\Entities\Inspection;
 use Modules\Inspection\Entities\InspectionTaskMaintenanceDoc;
 use Modules\Listings\Entities\AdvertGeneralFeatures;
@@ -19,7 +18,6 @@ use Modules\Listings\Entities\ListingPropertyDetails;
 use Modules\Listings\Entities\OptionalProperties;
 use Modules\Messages\Entities\MessageWithMail;
 use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
-use Modules\Properties\Entities\Properties;
 use Modules\Properties\Entities\PropertyActivity;
 use Modules\Properties\Entities\PropertyActivityEmail;
 use Modules\Settings\Entities\SettingListingProvider;
@@ -38,10 +36,8 @@ class ListingsController extends Controller
             $draft = Listing::with('advertisement')->where('company_id', auth('api')->user()->company_id)->where('status', 'Draft')->get();
             $published = Listing::with('advertisement')->where('company_id', auth('api')->user()->company_id)->where('status', 'Published')->get();
             $leased = Listing::with('advertisement')->where('company_id', auth('api')->user()->company_id)->where('status', 'Leased')->get();
-            //   $listing->advertisement;
 
-
-            return response()->json(['data' => $listing, 'draft' => ['data' => $draft], 'published' => ['data' => $published], 'leased' => ['data' => $leased],'setting_listing_provider'=> ['listing_provider'=>$settingListingProvider], 'message' => 'Successfull'], 200);
+            return response()->json(['data' => $listing, 'draft' => ['data' => $draft], 'published' => ['data' => $published], 'leased' => ['data' => $leased], 'setting_listing_provider' => ['listing_provider' => $settingListingProvider], 'message' => 'Successfull'], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
         }
@@ -167,22 +163,16 @@ class ListingsController extends Controller
     public function store(Request $request)
     {
         try {
-
             $attributeNames = array(
-                'property_id'    => $request->property_id,
-                'type'    => $request->type,
+                'property_id' => $request->property_id,
+                'type' => $request->type,
                 'company_id' => auth('api')->user()->company_id,
-                // 'inspection_id' => $request->inspection_id,
-
-
             );
-
             $validator = Validator::make($attributeNames, [
-                'property_id'    =>  'required',
-                'type'           =>  'required',
-
-
+                'property_id' => 'required',
+                'type' => 'required',
             ]);
+
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
@@ -191,18 +181,14 @@ class ListingsController extends Controller
                     $listing = Listing::create($attributeNames);
                     $listingId = $listing->id;
                     $listingRental = new ListingAdvertisement();
-                    // return $listing->id;
                     $listingRental->listing_id = $listing->id;
-                    $listingRental->listing_agent_primary  = $request->listing_agent_primary;
-                    $listingRental->listing_agent_secondary  = $request->listing_agent_secondary;
-                    $listingRental->date_available  = $request->date_available;
-                    $listingRental->rent  = $request->rent;
-                    $listingRental->display_rent  = $request->display_rent;
-                    $listingRental->bond  = $request->bond;
-
+                    $listingRental->listing_agent_primary = $request->listing_agent_primary;
+                    $listingRental->listing_agent_secondary = $request->listing_agent_secondary;
+                    $listingRental->date_available = $request->date_available;
+                    $listingRental->rent = $request->rent;
+                    $listingRental->display_rent = $request->display_rent;
+                    $listingRental->bond = $request->bond;
                     $listingRental->save();
-
-
 
                     $listingPropertyDetails = new ListingPropertyDetails();
                     $listingPropertyDetails->listing_id = $listing->id;
@@ -219,7 +205,6 @@ class ListingsController extends Controller
                     $listingOptionalProperties->carports = $request->carports;
                     $listingOptionalProperties->open_car_space = $request->open_car_space;
                     $listingOptionalProperties->save();
-
 
                     $listingGeneralFeatures = new AdvertGeneralFeatures();
                     $listingGeneralFeatures->listing_id = $listing->id;
@@ -265,24 +250,15 @@ class ListingsController extends Controller
                     $listingAdvertVideoUrl->online_tour = $request->online_tour;
                     $listingAdvertVideoUrl->save();
 
-
-                    $message_action_name = "Listing";
-                    // $message_trigger_to = 'Tenant';
-                    // $messsage_trigger_point = 'Reported';
-                    $messsage_trigger_point = 'New Listing Created';
+                    $message_action_name = $request->type === "Rental" ? "Rental Listing" : "Sale Listing";
+                    $messsage_trigger_point = 'Created';
                     $data = [
                         "property_id" => $request->property_id,
                         "id" => $listing->id,
                         "status" => "pending",
-                        "owner_contact_id" => null,
-                        "tenant_contact_id" => null
-
                     ];
                     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                    // $value = $activityMessageTrigger->trigger();
-                    $value = $activityMessageTrigger->trigger();
-                    // return $value;
+                    $activityMessageTrigger->trigger();
                 });
 
                 return response()->json(['listing_id' => $listingId, 'message' => 'successful'], 200);
@@ -300,8 +276,9 @@ class ListingsController extends Controller
     public function show($id)
     {
         try {
-            // $listing = Listing::with(['properties'])->first();
-            $listing = Listing::where('id', $id)->with(['advertisement', 'listing_floor_plan_images', 'properties'])->get();
+            $listing = Listing::where('id', $id)
+                ->with(['advertisement', 'listing_floor_plan_images', 'properties'])
+                ->get();
             return response()->json(['data' => $listing, 'message' => 'Successfull']);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -310,7 +287,6 @@ class ListingsController extends Controller
     public function showinspection($id)
     {
         try {
-
             $ins = Inspection::where('property_id', $id)->get();
             return response()->json(['data' => $ins, 'message' => 'Successfull'], 200);
         } catch (\Exception $ex) {
@@ -342,12 +318,14 @@ class ListingsController extends Controller
 
 
     public function listingLabelUpdate(Request $request, $id)
-
     {
         try {
-            $listingLabel = Listing::where('id', $id)->with('properties.property_address', 'advertGeneralFeatures', 'listingPropetyDetails', 'listingAdvertisement')->first();
+            $listingLabel = Listing::where('id', $id)
+                ->with('properties.property_address', 'advertGeneralFeatures', 'listingPropetyDetails', 'listingAdvertisement')
+                ->first();
+
             $settingListingProvider = SettingListingProvider::where('company_id', auth('api')->user()->company_id)->first();
-            // return $settingListingProvider->agent_id;
+
             $agentID = $settingListingProvider->agent_id;
             $uniqueID = random_int(1000, 9999);
             $currentDateTime = date('Y-m-d-H:i:s');
@@ -361,10 +339,10 @@ class ListingsController extends Controller
                 'id' => 'required',
                 'status' => 'required'
             ]);
+
             if ($validator->fails()) {
                 return response()->json(array('error' => $validator->getMessageBag()->toArray()), 422);
             } else {
-
                 if ($request->status === "Draft") {
                     $listingLabel = Listing::where('id', $id)->first();
                     $uniqueID = $listingLabel->unique_id;
@@ -372,31 +350,23 @@ class ListingsController extends Controller
                     $body = <<<XML
                     <propertyList date="$currentDateTime">
                     <rental modTime="$currentDateTime" status="offmarket">
-
                         <agentID>$agentID</agentID>
                         <uniqueListingAgentID>"3c0aa351-9829-44b7-b9a0-0ba26c856b94"</uniqueListingAgentID>
                         <propertyID>$propertyID</propertyID>
                         <uniqueID>$uniqueID</uniqueID>
-
-
-
                     </rental>
                     </propertyList>
                     XML;
-                    // $listingLabel->status = $request->status;
-                    // $listingLabel->update();
-
                     $activity = PropertyActivity::where('id', $listingLabel->id)->update(["status" => "Reported"]);
                     $message_action_name = "Listing";
                     $messsage_trigger_point = "Unpublished";
                     $data = [
                         "property_id" => $propertyID,
-
                         "tenant_contact_id" => null,
                         "id" => $request->id,
                     ];
 
-                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name,'', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
 
                     $value = $activityMessageTrigger->trigger();
                     $listingLabel->status = $request->status;
@@ -404,17 +374,14 @@ class ListingsController extends Controller
                     $listingLabel->update();
                     // return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
                 } else if ($request->status === "Published") {
-
-                    $listingLabel = Listing::where('id', $id)->with('properties.property_address', 'advertGeneralFeatures', 'listingPropetyDetails', 'listingAdvertisement', 'listing_advert_slider_images', 'properties.property_images','listing_floor_plan_images')->first();
-                    
-                    // return $listingLabel->advertGeneralFeatures;
+                    $listingLabel = Listing::where('id', $id)
+                        ->with('properties.property_address', 'advertGeneralFeatures', 'listingPropetyDetails', 'listingAdvertisement', 'listing_advert_slider_images', 'properties.property_images', 'listing_floor_plan_images')
+                        ->first();
                     $firstImage = null;
                     $secondImage = null;
                     $thirdImage = null;
 
                     $bucketUrl = getenv('API_IMAGE');
-                    // return $bucketUrl;
-
 
                     foreach ($listingLabel->listing_advert_slider_images as $key => $value) {
                         if ($key === 0) {
@@ -423,47 +390,39 @@ class ListingsController extends Controller
                             $secondImage = $bucketUrl . $value->advert_slider;
                         } elseif ($key === 2) {
                             $thirdImage = $bucketUrl . $value->advert_slider;
-                        }
-                        elseif ($key === 3) {
+                        } elseif ($key === 3) {
                             $forthImage = $bucketUrl . $value->advert_slider;
-                        }
-                         elseif ($key === 3) {
+                        } elseif ($key === 3) {
                             $fiveImage = $bucketUrl . $value->advert_slider;
                         }
                     }
                     $floorFirstImage = null;
                     $floorSecondImage = null;
                     foreach ($listingLabel->listing_floor_plan_images as $key => $value) {
-                        // return $value;
                         if ($key === 0) {
                             $floorFirstImage = $bucketUrl . $value->floor_image;
                         } elseif ($key === 1) {
                             $floorSecondImage = $bucketUrl . $value->floor_image;
-                        } 
+                        }
                     }
 
                     $dateAvailable = $listingLabel->listingAdvertisement->date_available;
-                    // return $dateAvailable;
-                    // $listingLabel->status = $request->status;
-                    // $listingLabel->update();
 
                     $activity = PropertyActivity::where('id', $listingLabel->id)->update(["status" => "Reported"]);
-                    $message_action_name = "Listing";
+
+
+                    $message_action_name = $listingLabel->type === "Rental" ? "Rental Listing" : "Sale Listing";
                     $messsage_trigger_point = "Published";
                     $data = [
                         "property_id" => $listingLabel->property_id,
-
-                        "tenant_contact_id" => null,
                         "id" => $request->id,
                     ];
-
                     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
                     $value = $activityMessageTrigger->trigger();
 
 
                     $propertyID = $listingLabel->property_id;
-                    $rent =  $listingLabel->listingAdvertisement->rent;
+                    $rent = $listingLabel->listingAdvertisement->rent;
                     // return $rent;
                     $land_area = $listingLabel->properties->land_area;
                     $land_size = $listingLabel->properties->land_size;
@@ -479,13 +438,13 @@ class ListingsController extends Controller
                     $date = date('Y-m-d');
 
                     $subNumber = $listingLabel->properties->property_address->number;
-                    
+
                     $streetNumber = $listingLabel->properties->property_address->number;
-                   
+
                     $street = $listingLabel->properties->property_address->street;
-                    
+
                     $suburb = $listingLabel->properties->property_address->suburb;
-                   
+
                     $state = $listingLabel->properties->property_address->state;
                     $postcode = $listingLabel->properties->property_address->postcode;
                     $country = $listingLabel->properties->property_address->country;
@@ -511,24 +470,24 @@ class ListingsController extends Controller
                     $pay_tv_access = $listingLabel->advertGeneralFeatures->pay_tv_access;
                     $rumpus_room = $listingLabel->advertGeneralFeatures->rumpus_room;
                     $study = $listingLabel->advertGeneralFeatures->study;
-                   
+
 
                     //  indoor end
 
-                     //  outdoor features start 
-                     $balcony_or_deck = $listingLabel->advertGeneralFeatures->balcony_or_deck;
-                   
-                     $deck = $listingLabel->advertGeneralFeatures->deck;
-                     $fully_fenced = $listingLabel->advertGeneralFeatures->fully_fenced;
-                     $garden_or_courtyard = $listingLabel->advertGeneralFeatures->garden_or_courtyard;
+                    //  outdoor features start 
+                    $balcony_or_deck = $listingLabel->advertGeneralFeatures->balcony_or_deck;
 
-                     $outside_spa = $listingLabel->advertGeneralFeatures->outside_spa;
-                     $secure_parking = $listingLabel->advertGeneralFeatures->secure_parking;
-                     $shed = $listingLabel->advertGeneralFeatures->shed;
+                    $deck = $listingLabel->advertGeneralFeatures->deck;
+                    $fully_fenced = $listingLabel->advertGeneralFeatures->fully_fenced;
+                    $garden_or_courtyard = $listingLabel->advertGeneralFeatures->garden_or_courtyard;
 
-                     $swimming_pool = $listingLabel->advertGeneralFeatures->swimming_pool;
-                     $tennis_court = $listingLabel->advertGeneralFeatures->tennis_court;
-                     //outdoor features end
+                    $outside_spa = $listingLabel->advertGeneralFeatures->outside_spa;
+                    $secure_parking = $listingLabel->advertGeneralFeatures->secure_parking;
+                    $shed = $listingLabel->advertGeneralFeatures->shed;
+
+                    $swimming_pool = $listingLabel->advertGeneralFeatures->swimming_pool;
+                    $tennis_court = $listingLabel->advertGeneralFeatures->tennis_court;
+                    //outdoor features end
 
                     //  ecofriendly start
                     $solar_panels = $listingLabel->advertGeneralFeatures->solar_panels;
@@ -536,75 +495,75 @@ class ListingsController extends Controller
                     // ecofriendly end
                     $wardrobes = $listingLabel->advertGeneralFeatures->Built_in_wardrobes;
                     $air_conditioning = $listingLabel->advertGeneralFeatures->air_conditioning;
-                    
-                    
+
+
                     $dishwasher = $listingLabel->advertGeneralFeatures->dishwasher;
                     $ensuites = $listingLabel->advertGeneralFeatures->ensuites;
-                    
-                    
+
+
                     $furnished = $listingLabel->advertGeneralFeatures->furnished;
-                   
-                    
-                    
-                    
-                    
-                   
+
+
+
+
+
+
                     $internal_laundry = $listingLabel->advertGeneralFeatures->internal_laundry;
                     $outdoor_entertaining_area = $listingLabel->advertGeneralFeatures->outdoor_entertaining_area;
-                    
-                   
+
+
                     $pets_allowed = $listingLabel->advertGeneralFeatures->pets_allowed;
-                    
-                    
-                    
+
+
+
                     $smokers_permitted = $listingLabel->advertGeneralFeatures->smokers_permitted;
-                    
+
                     // indoor start
-                    $alarm_system = isset($alarm_system) ? "yes": "no";
-                    $broadband = isset($broadband) ? "yes": "no";
-                    $dishwasher = isset($dishwasher) ? "yes": "no";
-                    $floorboards = isset($floorboards) ? "yes": "no";
-                    $gas_heating = isset($gas_heating) ? "yes": "no";
+                    $alarm_system = isset($alarm_system) ? "yes" : "no";
+                    $broadband = isset($broadband) ? "yes" : "no";
+                    $dishwasher = isset($dishwasher) ? "yes" : "no";
+                    $floorboards = isset($floorboards) ? "yes" : "no";
+                    $gas_heating = isset($gas_heating) ? "yes" : "no";
 
-                    $gym = isset($gym) ? "yes": "no";
-                    $hot_water_service = isset($hot_water_service) ? "yes": "no";
-                    $inside_spa = isset($inside_spa) ? "yes": "no";
+                    $gym = isset($gym) ? "yes" : "no";
+                    $hot_water_service = isset($hot_water_service) ? "yes" : "no";
+                    $inside_spa = isset($inside_spa) ? "yes" : "no";
 
-                    $intercom = isset($intercom) ? "yes": "no";
-                    $pay_tv_access = isset($pay_tv_access) ? "yes": "no";
-                    $rumpus_room = isset($rumpus_room) ? "yes": "no";
-                    $study = isset($study) ? "yes": "no";
+                    $intercom = isset($intercom) ? "yes" : "no";
+                    $pay_tv_access = isset($pay_tv_access) ? "yes" : "no";
+                    $rumpus_room = isset($rumpus_room) ? "yes" : "no";
+                    $study = isset($study) ? "yes" : "no";
 
                     // indoor end
 
                     // outdoor features start 
-                    $balcony_or_deck = isset($balcony_or_deck) ? "yes": "no";
-                    $deck = isset($deck) ? "yes": "no";
-                    $fully_fenced = isset($fully_fenced) ? "yes": "no";
+                    $balcony_or_deck = isset($balcony_or_deck) ? "yes" : "no";
+                    $deck = isset($deck) ? "yes" : "no";
+                    $fully_fenced = isset($fully_fenced) ? "yes" : "no";
 
-                    $garden_or_courtyard = isset($garden_or_courtyard) ? "yes": "no";
-                    $outdoor_entertaining_area = isset($outdoor_entertaining_area) ? "yes": "no";
-                    $outside_spa = isset($outside_spa) ? "yes": "no";
-                    $secure_parking = isset($secure_parking) ? "yes": "no";
-                    $shed = isset($shed) ? "yes": "no";
-                    $swimming_pool = isset($swimming_pool) ? "yes": "no";
-                    $tennis_court = isset($tennis_court) ? "yes": "no";
+                    $garden_or_courtyard = isset($garden_or_courtyard) ? "yes" : "no";
+                    $outdoor_entertaining_area = isset($outdoor_entertaining_area) ? "yes" : "no";
+                    $outside_spa = isset($outside_spa) ? "yes" : "no";
+                    $secure_parking = isset($secure_parking) ? "yes" : "no";
+                    $shed = isset($shed) ? "yes" : "no";
+                    $swimming_pool = isset($swimming_pool) ? "yes" : "no";
+                    $tennis_court = isset($tennis_court) ? "yes" : "no";
                     // outdoor features end
                     //  ecofriendly start
-                    $solar_hot_water = isset($solar_hot_water) ? "yes": "no";
-                    $solar_panels = isset($solar_panels) ? "yes": "no";
-                    $Built_in_wardrobes = isset($wardrobes) ? "yes": "no";
+                    $solar_hot_water = isset($solar_hot_water) ? "yes" : "no";
+                    $solar_panels = isset($solar_panels) ? "yes" : "no";
+                    $Built_in_wardrobes = isset($wardrobes) ? "yes" : "no";
                     //  ecofriendly end
 
 
-                    $furnished = isset($furnished) ? "yes": "no";
-                    $pets_allowed = isset($pets_allowed) ? "yes": "no";
-                    $smokers_permitted = isset($smokers_permitted) ? "yes": "no";
-                    $air_conditioning = isset($air_conditioning) ? "yes": "no";
-                    $ensuites = isset($ensuites) ? "yes": "no";              
-                    $internal_laundry = isset($internal_laundry) ? "yes": "no";
-                    
-                    $toilets = isset($toilets) ? "yes": "no";
+                    $furnished = isset($furnished) ? "yes" : "no";
+                    $pets_allowed = isset($pets_allowed) ? "yes" : "no";
+                    $smokers_permitted = isset($smokers_permitted) ? "yes" : "no";
+                    $air_conditioning = isset($air_conditioning) ? "yes" : "no";
+                    $ensuites = isset($ensuites) ? "yes" : "no";
+                    $internal_laundry = isset($internal_laundry) ? "yes" : "no";
+
+                    $toilets = isset($toilets) ? "yes" : "no";
                     // return $secure_parking;
 
                     // $listingLabel->status = $request->status;
@@ -774,7 +733,7 @@ class ListingsController extends Controller
                                 </rental>
                             </propertyList>
                     XML;
-                
+
 
 
 
@@ -786,13 +745,8 @@ class ListingsController extends Controller
 
                     // return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
                 } else if ($request->status === "Leased") {
-                    // return "hello";
                     $listingLabel = Listing::where('id', $id)->first();
                     $uniqueID = $listingLabel->unique_id;
-                    // return $uniqueID;
-                    // return $listingLabel;
-                    // $listingLabel->status = $request->status;
-                    // $listingLabel->update();
                     $propertyID = $listingLabel->property_id;
 
                     $body = <<<XML
@@ -809,25 +763,21 @@ class ListingsController extends Controller
                     </rental>
                     </propertyList>
                     XML;
-                    // return $body;
                     $activity = PropertyActivity::where('id', $listingLabel->id)->update(["status" => "Leased"]);
-                    $message_action_name = "Listing";
-                    $messsage_trigger_point = "Leased";
 
+                    $message_action_name = $listingLabel->type === "Rental" ? "Rental Listing" : "Sale Listing";
+                    $messsage_trigger_point = "Leased";
                     $data = [
                         "property_id" => $propertyID,
-
-                        "tenant_contact_id" => null,
                         "id" => $request->id,
                     ];
-
                     $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
                     $value = $activityMessageTrigger->trigger();
+
+
                     $listingLabel->status = $request->status;
                     $listingLabel->unique_id = $uniqueID;
                     $listingLabel->update();
-                    // return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
                 }
                 $login = '3c0aa351-9829-44b7-b9a0-0ba26c856b94';
                 $password = 'b476b67a-f9d2-4a21-affd-dfe1b146d454';
@@ -877,7 +827,7 @@ class ListingsController extends Controller
 
                 if ($err) {
                     // echo "cURL Error #:" . $err;
-                    return response()->json(["status" => false, "error" => ['error'], "message" =>$err, "data" => []], 500);
+                    return response()->json(["status" => false, "error" => ['error'], "message" => $err, "data" => []], 500);
                 } else {
                     // return "hello";
 
@@ -893,152 +843,153 @@ class ListingsController extends Controller
     public function listingRepublish(Request $request, $id)
     {
         $listingLabel = Listing::where('id', $id)->with('properties.property_address', 'advertGeneralFeatures', 'listingPropetyDetails', 'listingAdvertisement', 'listing_advert_slider_images', 'properties.property_images')->first();
-        
-       
-                    $uniqueID = $listingLabel->unique_id;
-                    // return $uniqueID;
-                    $firstImage = null;
-                    $secondImage = null;
-                    $thirdImage = null;
-                    $bucketUrl = 'https://mydaybucket.s3.ap-southeast-2.amazonaws.com/';
-
-                    foreach ($listingLabel->listing_advert_slider_images as $key => $value) {
-                        if ($key === 0) {
-                            $firstImage = $bucketUrl . $value->advert_slider;
-                        } elseif ($key === 1) {
-                            $secondImage = $bucketUrl . $value->advert_slider;
-                        } elseif ($key === 2) {
-                            $thirdImage = $bucketUrl . $value->advert_slider;
-                        }
-                    }
-                    $dateAvailable = $listingLabel->listingAdvertisement->date_available;
-                    // return $dateAvailable;
-                    // $listingLabel->status = $request->status;
-                    // $listingLabel->update();
-
-                    // $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Reported"]);
-                    // $message_action_name = "Listing";
-                    // $messsage_trigger_point = "Published";
-                    // $data = [
-                    //     "property_id" => $listingLabel->property_id,
-
-                    //     "tenant_contact_id" => null,
-                    //     "id" => $request->id,
-                    // ];
-
-                    // $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                    // $value = $activityMessageTrigger->trigger();
 
 
-                    $propertyID = $listingLabel->property_id;
-                    $rent =  $listingLabel->listingAdvertisement->rent;
-                    // return $rent;
-                    $land_area = $listingLabel->properties->land_area;
-                    $land_size = $listingLabel->properties->land_size;
-                    // return $land_size;
-                    $agentEmail = $listingLabel->agent_email;
-                    $agentPhone = $listingLabel->agent_phone;
+        $uniqueID = $listingLabel->unique_id;
+        // return $uniqueID;
+        $firstImage = null;
+        $secondImage = null;
+        $thirdImage = null;
+        $bucketUrl = 'https://mydaybucket.s3.ap-southeast-2.amazonaws.com/';
 
-                    $bedroom = $listingLabel->bedroom;
-                    $bathroom = $listingLabel->bathroom;
-                    $car_space = $listingLabel->car_space;
+        foreach ($listingLabel->listing_advert_slider_images as $key => $value) {
+            if ($key === 0) {
+                $firstImage = $bucketUrl . $value->advert_slider;
+            } elseif ($key === 1) {
+                $secondImage = $bucketUrl . $value->advert_slider;
+            } elseif ($key === 2) {
+                $thirdImage = $bucketUrl . $value->advert_slider;
+            }
+        }
+        $dateAvailable = $listingLabel->listingAdvertisement->date_available;
+        // return $dateAvailable;
+        // $listingLabel->status = $request->status;
+        // $listingLabel->update();
 
-                    $date = date('Y-m-d');
-                    $settingListingProvider = SettingListingProvider::where('company_id', auth('api')->user()->company_id)->first();
-            // return $settingListingProvider->agent_id;
-            $agentID = $settingListingProvider->agent_id;
-                    // $agentID = "LQNDVD";
-                    $subNumber = $listingLabel->properties->property_address->number;
-                    $streetNumber = $listingLabel->properties->property_address->number;
-                    $street = $listingLabel->properties->property_address->street;;
-                    $suburb = $listingLabel->properties->property_address->suburb;
-                    $state = $listingLabel->properties->property_address->state;
-                    $postcode = $listingLabel->properties->property_address->postcode;
-                    $country = $listingLabel->properties->property_address->country;
-                    $agentName = $listingLabel->properties->manager_name;
-                    $bulidingArea = null;
+        // $activity = PropertyActivity::where('id', $request->job_id)->update(["status" => "Reported"]);
+        // $message_action_name = "Listing";
+        // $messsage_trigger_point = "Published";
+        // $data = [
+        //     "property_id" => $listingLabel->property_id,
+
+        //     "tenant_contact_id" => null,
+        //     "id" => $request->id,
+        // ];
+
+        // $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+
+        // $value = $activityMessageTrigger->trigger();
 
 
-                    $description = $listingLabel->listingPropetyDetails->description;
-                    $title = $listingLabel->listingPropetyDetails->title;
-                    //general features
-                    $wardrobes = $listingLabel->advertGeneralFeatures->Built_in_wardrobes;
-                    $air_conditioning = $listingLabel->advertGeneralFeatures->air_conditioning;
-                    $alarm_system = $listingLabel->advertGeneralFeatures->alarm_system;
-                    $balcony_or_deck = $listingLabel->advertGeneralFeatures->balcony_or_deck;
-                    $broadband = $listingLabel->advertGeneralFeatures->broadband;
-                    $deck = $listingLabel->advertGeneralFeatures->deck;
-                    $dishwasher = $listingLabel->advertGeneralFeatures->dishwasher;
-                    $ensuites = $listingLabel->advertGeneralFeatures->ensuites;
-                    $floorboards = $listingLabel->advertGeneralFeatures->floorboards;
-                    $fully_fenced = $listingLabel->advertGeneralFeatures->fully_fenced;
-                    $furnished = $listingLabel->advertGeneralFeatures->furnished;
-                    $garden_or_courtyard = $listingLabel->advertGeneralFeatures->garden_or_courtyard;
-                    $gas_heating = $listingLabel->advertGeneralFeatures->gas_heating;
-                    $gym = $listingLabel->advertGeneralFeatures->gym;
-                    $hot_water_service = $listingLabel->advertGeneralFeatures->hot_water_service;
-                    $inside_spa = $listingLabel->advertGeneralFeatures->inside_spa;
-                    $intercom = $listingLabel->advertGeneralFeatures->intercom;
-                    $internal_laundry = $listingLabel->advertGeneralFeatures->internal_laundry;
-                    $outdoor_entertaining_area = $listingLabel->advertGeneralFeatures->outdoor_entertaining_area;
-                    $outside_spa = $listingLabel->advertGeneralFeatures->outside_spa;
-                    $pay_tv_access = $listingLabel->advertGeneralFeatures->pay_tv_access;
-                    $pets_allowed = $listingLabel->advertGeneralFeatures->pets_allowed;
-                    $rumpus_room = $listingLabel->advertGeneralFeatures->rumpus_room;
-                    $secure_parking = $listingLabel->advertGeneralFeatures->secure_parking;
-                    $shed = $listingLabel->advertGeneralFeatures->shed;
-                    $smokers_permitted = $listingLabel->advertGeneralFeatures->smokers_permitted;
-                    $solar_hot_water = $listingLabel->advertGeneralFeatures->solar_hot_water;
-                    $solar_panels = $listingLabel->advertGeneralFeatures->solar_panels;
-                    $study = $listingLabel->advertGeneralFeatures->study;
-                    $swimming_pool = $listingLabel->advertGeneralFeatures->swimming_pool;
-                    $tennis_court = $listingLabel->advertGeneralFeatures->tennis_court;
-                    $toilets = $listingLabel->advertGeneralFeatures->toilets;
+        $propertyID = $listingLabel->property_id;
+        $rent = $listingLabel->listingAdvertisement->rent;
+        // return $rent;
+        $land_area = $listingLabel->properties->land_area;
+        $land_size = $listingLabel->properties->land_size;
+        // return $land_size;
+        $agentEmail = $listingLabel->agent_email;
+        $agentPhone = $listingLabel->agent_phone;
 
-                    $Built_in_wardrobes = isset($Built_in_wardrobes) ? "yes" : "no";
-                    $air_conditioning = isset($air_conditioning) ? "yes" : "no";
-                    $alarm_system = isset($alarm_system) ? "yes" : "no";
+        $bedroom = $listingLabel->bedroom;
+        $bathroom = $listingLabel->bathroom;
+        $car_space = $listingLabel->car_space;
 
-                    $balcony_or_deck = isset($balcony_or_deck) ? "yes" : "no";
+        $date = date('Y-m-d');
+        $settingListingProvider = SettingListingProvider::where('company_id', auth('api')->user()->company_id)->first();
+        // return $settingListingProvider->agent_id;
+        $agentID = $settingListingProvider->agent_id;
+        // $agentID = "LQNDVD";
+        $subNumber = $listingLabel->properties->property_address->number;
+        $streetNumber = $listingLabel->properties->property_address->number;
+        $street = $listingLabel->properties->property_address->street;
+        ;
+        $suburb = $listingLabel->properties->property_address->suburb;
+        $state = $listingLabel->properties->property_address->state;
+        $postcode = $listingLabel->properties->property_address->postcode;
+        $country = $listingLabel->properties->property_address->country;
+        $agentName = $listingLabel->properties->manager_name;
+        $bulidingArea = null;
 
-                    $broadband = isset($broadband) ? "yes" : "no";
 
-                    $deck = isset($deck) ? "yes" : "no";
+        $description = $listingLabel->listingPropetyDetails->description;
+        $title = $listingLabel->listingPropetyDetails->title;
+        //general features
+        $wardrobes = $listingLabel->advertGeneralFeatures->Built_in_wardrobes;
+        $air_conditioning = $listingLabel->advertGeneralFeatures->air_conditioning;
+        $alarm_system = $listingLabel->advertGeneralFeatures->alarm_system;
+        $balcony_or_deck = $listingLabel->advertGeneralFeatures->balcony_or_deck;
+        $broadband = $listingLabel->advertGeneralFeatures->broadband;
+        $deck = $listingLabel->advertGeneralFeatures->deck;
+        $dishwasher = $listingLabel->advertGeneralFeatures->dishwasher;
+        $ensuites = $listingLabel->advertGeneralFeatures->ensuites;
+        $floorboards = $listingLabel->advertGeneralFeatures->floorboards;
+        $fully_fenced = $listingLabel->advertGeneralFeatures->fully_fenced;
+        $furnished = $listingLabel->advertGeneralFeatures->furnished;
+        $garden_or_courtyard = $listingLabel->advertGeneralFeatures->garden_or_courtyard;
+        $gas_heating = $listingLabel->advertGeneralFeatures->gas_heating;
+        $gym = $listingLabel->advertGeneralFeatures->gym;
+        $hot_water_service = $listingLabel->advertGeneralFeatures->hot_water_service;
+        $inside_spa = $listingLabel->advertGeneralFeatures->inside_spa;
+        $intercom = $listingLabel->advertGeneralFeatures->intercom;
+        $internal_laundry = $listingLabel->advertGeneralFeatures->internal_laundry;
+        $outdoor_entertaining_area = $listingLabel->advertGeneralFeatures->outdoor_entertaining_area;
+        $outside_spa = $listingLabel->advertGeneralFeatures->outside_spa;
+        $pay_tv_access = $listingLabel->advertGeneralFeatures->pay_tv_access;
+        $pets_allowed = $listingLabel->advertGeneralFeatures->pets_allowed;
+        $rumpus_room = $listingLabel->advertGeneralFeatures->rumpus_room;
+        $secure_parking = $listingLabel->advertGeneralFeatures->secure_parking;
+        $shed = $listingLabel->advertGeneralFeatures->shed;
+        $smokers_permitted = $listingLabel->advertGeneralFeatures->smokers_permitted;
+        $solar_hot_water = $listingLabel->advertGeneralFeatures->solar_hot_water;
+        $solar_panels = $listingLabel->advertGeneralFeatures->solar_panels;
+        $study = $listingLabel->advertGeneralFeatures->study;
+        $swimming_pool = $listingLabel->advertGeneralFeatures->swimming_pool;
+        $tennis_court = $listingLabel->advertGeneralFeatures->tennis_court;
+        $toilets = $listingLabel->advertGeneralFeatures->toilets;
 
-                    $dishwasher = isset($dishwasher) ? "yes" : "no";
+        $Built_in_wardrobes = isset($Built_in_wardrobes) ? "yes" : "no";
+        $air_conditioning = isset($air_conditioning) ? "yes" : "no";
+        $alarm_system = isset($alarm_system) ? "yes" : "no";
 
-                    $ensuites = isset($ensuites) ? "yes" : "no";
-                    $floorboards = isset($floorboards) ? "yes" : "no";
-                    $fully_fenced = isset($fully_fenced) ? "yes" : "no";
-                    $furnished = isset($furnished) ? "yes" : "no";
-                    $garden_or_courtyard = isset($garden_or_courtyard) ? "yes" : "no";
-                    $gas_heating = isset($gas_heating) ? "yes" : "no";
-                    $gym = isset($gym) ? "yes" : "no";
-                    $hot_water_service = isset($hot_water_service) ? "yes" : "no";
-                    $inside_spa = isset($inside_spa) ? "yes" : "no";
-                    $intercom = isset($intercom) ? "yes" : "no";
-                    $internal_laundry = isset($internal_laundry) ? "yes" : "no";
-                    $outdoor_entertaining_area = isset($outdoor_entertaining_area) ? "yes" : "no";
-                    $outside_spa = isset($outside_spa) ? "yes" : "no";
-                    $pay_tv_access = isset($pay_tv_access) ? "yes" : "no";
-                    $pets_allowed = isset($pets_allowed) ? "yes" : "no";
-                    $secure_parking = isset($secure_parking) ? "yes" : "no";
-                    $shed = isset($shed) ? "yes" : "no";
-                    $smokers_permitted = isset($smokers_permitted) ? "yes" : "no";
-                    $solar_hot_water = isset($solar_hot_water) ? "yes" : "no";
-                    $solar_panels = isset($solar_panels) ? "yes" : "no";
-                    $study = isset($study) ? "yes" : "no";
-                    $swimming_pool = isset($swimming_pool) ? "yes" : "no";
-                    $tennis_court = isset($tennis_court) ? "yes" : "no";
-                    $toilets = isset($toilets) ? "yes" : "no";
-                    $currentDateTime = date('Y-m-d-H:i:s');
-                    // $listingLabel->status = $request->status;
-                    // $listingLabel->unique_id = $uniqueID;
-                    // $listingLabel->update();
-                    // return "hello";
+        $balcony_or_deck = isset($balcony_or_deck) ? "yes" : "no";
 
-                    $body = <<<XML
+        $broadband = isset($broadband) ? "yes" : "no";
+
+        $deck = isset($deck) ? "yes" : "no";
+
+        $dishwasher = isset($dishwasher) ? "yes" : "no";
+
+        $ensuites = isset($ensuites) ? "yes" : "no";
+        $floorboards = isset($floorboards) ? "yes" : "no";
+        $fully_fenced = isset($fully_fenced) ? "yes" : "no";
+        $furnished = isset($furnished) ? "yes" : "no";
+        $garden_or_courtyard = isset($garden_or_courtyard) ? "yes" : "no";
+        $gas_heating = isset($gas_heating) ? "yes" : "no";
+        $gym = isset($gym) ? "yes" : "no";
+        $hot_water_service = isset($hot_water_service) ? "yes" : "no";
+        $inside_spa = isset($inside_spa) ? "yes" : "no";
+        $intercom = isset($intercom) ? "yes" : "no";
+        $internal_laundry = isset($internal_laundry) ? "yes" : "no";
+        $outdoor_entertaining_area = isset($outdoor_entertaining_area) ? "yes" : "no";
+        $outside_spa = isset($outside_spa) ? "yes" : "no";
+        $pay_tv_access = isset($pay_tv_access) ? "yes" : "no";
+        $pets_allowed = isset($pets_allowed) ? "yes" : "no";
+        $secure_parking = isset($secure_parking) ? "yes" : "no";
+        $shed = isset($shed) ? "yes" : "no";
+        $smokers_permitted = isset($smokers_permitted) ? "yes" : "no";
+        $solar_hot_water = isset($solar_hot_water) ? "yes" : "no";
+        $solar_panels = isset($solar_panels) ? "yes" : "no";
+        $study = isset($study) ? "yes" : "no";
+        $swimming_pool = isset($swimming_pool) ? "yes" : "no";
+        $tennis_court = isset($tennis_court) ? "yes" : "no";
+        $toilets = isset($toilets) ? "yes" : "no";
+        $currentDateTime = date('Y-m-d-H:i:s');
+        // $listingLabel->status = $request->status;
+        // $listingLabel->unique_id = $uniqueID;
+        // $listingLabel->update();
+        // return "hello";
+
+        $body = <<<XML
                     <propertyList date="$currentDateTime">
                     <rental modTime="$currentDateTime" status="offmarket">
                                     <agentID>$agentID</agentID>
@@ -1170,79 +1121,79 @@ class ListingsController extends Controller
                                 </rental>
                             </propertyList>
                     XML;
-                    // return $body;
-                    $login = '3c0aa351-9829-44b7-b9a0-0ba26c856b94';
-                    $password = 'b476b67a-f9d2-4a21-affd-dfe1b146d454';
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, 'https://api.realestate.com.au/oauth/token');
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_POST, 1);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
-                    curl_setopt($ch, CURLOPT_USERPWD, "$login:$password");
-                    $headers = array();
-                    $headers[] = 'Content-Type: application/x-www-form-urlencoded';
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                    $result = curl_exec($ch);
-                    // return $result;
+        // return $body;
+        $login = '3c0aa351-9829-44b7-b9a0-0ba26c856b94';
+        $password = 'b476b67a-f9d2-4a21-affd-dfe1b146d454';
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.realestate.com.au/oauth/token');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
+        curl_setopt($ch, CURLOPT_USERPWD, "$login:$password");
+        $headers = array();
+        $headers[] = 'Content-Type: application/x-www-form-urlencoded';
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $result = curl_exec($ch);
+        // return $result;
 
-                    if (curl_errno($ch)) {
-                        // echo 'Error:' . curl_error($ch);
-                        return response()->json(['status' => false, 'error' => ['error'], 'message' => $ch->getMessage(), 'data' => []], 500);
-                    }
-                    curl_close($ch);
-                    $access = json_decode($result);
+        if (curl_errno($ch)) {
+            // echo 'Error:' . curl_error($ch);
+            return response()->json(['status' => false, 'error' => ['error'], 'message' => $ch->getMessage(), 'data' => []], 500);
+        }
+        curl_close($ch);
+        $access = json_decode($result);
 
-                    $token = $access->access_token;
-
-
-                    $curl = curl_init();
-
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://api.realestate.com.au/listing/v1/upload",
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => "",
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 30000,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => "POST",
-                        CURLOPT_POSTFIELDS => $body,
-                        CURLOPT_HTTPHEADER => array(
-                            // Set Here Your Requesred Headers
-                            'Content-Type: text/xml',
-                            'Authorization: Bearer ' . $token
-                            // 'Authorization: ' => $token
-                        ),
-                    ));
-                    $response = curl_exec($curl);
-                    $err = curl_error($curl);
-                    curl_close($curl);
-
-                    if ($err) {
-                        // echo "cURL Error #:" . $err;
-                        // return $err;
-                        return response()->json(['status' => false, 'error' => ['error'], 'message' => $err, 'data' => []], 500);
-                    } else {
-                        // print_r(json_decode($response));
-                        // return $response;
-                        // $listingLabel->status = $request->status;
-                        $listingLabel->unique_id = $uniqueID;
-                        $listingLabel->secondary_status = null;
-                       
-                        $listingLabel->update();
-                        return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
-                    }
+        $token = $access->access_token;
 
 
-                    // // return $listingLabel;
-                    // $listingLabel->status = $request->status;
-                    // $listingLabel->save();
-                    $listingLabel->status = $request->status;
-                    $listingLabel->unique_id = $uniqueID;
-                    $listingLabel->secondary_status = null;
-                   
-                    $listingLabel->update();
+        $curl = curl_init();
 
-                    return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://api.realestate.com.au/listing/v1/upload",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30000,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => array(
+                // Set Here Your Requesred Headers
+                'Content-Type: text/xml',
+                'Authorization: Bearer ' . $token
+                // 'Authorization: ' => $token
+            ),
+        ));
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+        curl_close($curl);
+
+        if ($err) {
+            // echo "cURL Error #:" . $err;
+            // return $err;
+            return response()->json(['status' => false, 'error' => ['error'], 'message' => $err, 'data' => []], 500);
+        } else {
+            // print_r(json_decode($response));
+            // return $response;
+            // $listingLabel->status = $request->status;
+            $listingLabel->unique_id = $uniqueID;
+            $listingLabel->secondary_status = null;
+
+            $listingLabel->update();
+            return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
+        }
+
+
+        // // return $listingLabel;
+        // $listingLabel->status = $request->status;
+        // $listingLabel->save();
+        $listingLabel->status = $request->status;
+        $listingLabel->unique_id = $uniqueID;
+        $listingLabel->secondary_status = null;
+
+        $listingLabel->update();
+
+        return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
     }
     /**
      * Remove the specified resource from storage.
@@ -1275,71 +1226,71 @@ class ListingsController extends Controller
                     </rental>
                     </propertyList>
                     XML;
-                    $login = '3c0aa351-9829-44b7-b9a0-0ba26c856b94';
-                $password = 'b476b67a-f9d2-4a21-affd-dfe1b146d454';
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, 'https://api.realestate.com.au/oauth/token');
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
-                curl_setopt($ch, CURLOPT_USERPWD, "$login:$password");
-                $headers = array();
-                $headers[] = 'Content-Type: application/x-www-form-urlencoded';
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                $result = curl_exec($ch);
-                // return $result;
+            $login = '3c0aa351-9829-44b7-b9a0-0ba26c856b94';
+            $password = 'b476b67a-f9d2-4a21-affd-dfe1b146d454';
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://api.realestate.com.au/oauth/token');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
+            curl_setopt($ch, CURLOPT_USERPWD, "$login:$password");
+            $headers = array();
+            $headers[] = 'Content-Type: application/x-www-form-urlencoded';
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            $result = curl_exec($ch);
+            // return $result;
 
-                if (curl_errno($ch)) {
-                    // echo 'Error:' . curl_error($ch);
-                    return response()->json(["status" => false, "error" => ['error'], "message" => $ch->getMessage(), "data" => []], 500);
-                }
-                curl_close($ch);
-                $access = json_decode($result);
+            if (curl_errno($ch)) {
+                // echo 'Error:' . curl_error($ch);
+                return response()->json(["status" => false, "error" => ['error'], "message" => $ch->getMessage(), "data" => []], 500);
+            }
+            curl_close($ch);
+            $access = json_decode($result);
 
-                $token = $access->access_token;
+            $token = $access->access_token;
 
 
-                $curl = curl_init();
+            $curl = curl_init();
 
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://api.realestate.com.au/listing/v1/upload",
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => "",
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 30000,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => "POST",
-                    CURLOPT_POSTFIELDS => $body,
-                    CURLOPT_HTTPHEADER => array(
-                        // Set Here Your Requesred Headers
-                        'Content-Type: text/xml',
-                        'Authorization: Bearer ' . $token
-                        // 'Authorization: ' => $token
-                    ),
-                ));
-                $response = curl_exec($curl);
-                $err = curl_error($curl);
-                curl_close($curl);
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => "https://api.realestate.com.au/listing/v1/upload",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30000,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => array(
+                    // Set Here Your Requesred Headers
+                    'Content-Type: text/xml',
+                    'Authorization: Bearer ' . $token
+                    // 'Authorization: ' => $token
+                ),
+            ));
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            curl_close($curl);
 
-                if ($err) {
-                    // echo "cURL Error #:" . $err;
-                    return response()->json(["status" => false, "error" => ['error'], "message" =>$err, "data" => []], 500);
-                } else {
-                    $propertyActivity = PropertyActivity::where('listing_id', $id)->pluck('id');
-            // return $propertyActivity;
-            $messageWithMail = MessageWithMail::whereIn('property_activity_id', $propertyActivity)->delete();
-            $activityEmail = PropertyActivityEmail::whereIn('property_activity_id', $propertyActivity)->delete();
-            $propertyActivity = PropertyActivity::where('listing_id', $id)->delete();
+            if ($err) {
+                // echo "cURL Error #:" . $err;
+                return response()->json(["status" => false, "error" => ['error'], "message" => $err, "data" => []], 500);
+            } else {
+                $propertyActivity = PropertyActivity::where('listing_id', $id)->pluck('id');
+                // return $propertyActivity;
+                $messageWithMail = MessageWithMail::whereIn('property_activity_id', $propertyActivity)->delete();
+                $activityEmail = PropertyActivityEmail::whereIn('property_activity_id', $propertyActivity)->delete();
+                $propertyActivity = PropertyActivity::where('listing_id', $id)->delete();
 
-            $listing = Listing::where('id', $id)->delete();
-                    // return "hello";
+                $listing = Listing::where('id', $id)->delete();
+                // return "hello";
 
-                    // print_r(json_decode($response));
-                    // return $response;
-                    // return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
-                    return response()->json(['data' => 'deleted', 'status' => 'successfull'], 200);
-                }
-            
+                // print_r(json_decode($response));
+                // return $response;
+                // return response()->json(['listing_id' => $listingLabel->id, 'status' => $listingLabel->status, 'message' => 'successful'], 200);
+                return response()->json(['data' => 'deleted', 'status' => 'successfull'], 200);
+            }
+
             return response()->json(['data' => 'deleted', 'status' => 'successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(['status' => false, 'error' => ['error'], 'message' => $th->getMessage(), 'data' => []], 500);
@@ -1349,9 +1300,11 @@ class ListingsController extends Controller
     {
         try {
             $listingDoc = InspectionTaskMaintenanceDoc::where('listing_id', $id)->with(
-                ['property' => function ($query) {
-                    $query->addSelect('id', 'reference');
-                }]
+                [
+                    'property' => function ($query) {
+                        $query->addSelect('id', 'reference');
+                    }
+                ]
             )->get();
             return response()->json(['data' => $listingDoc, 'message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
@@ -1379,7 +1332,7 @@ class ListingsController extends Controller
             $uniqueID = $listingLabel->unique_id;
             $propertyID = $listingLabel->property_id;
             $currentDateTime = now()->format('Y-m-d H:i:s');
-           
+
 
             // XML generation
             $body = <<<XML
@@ -1424,9 +1377,9 @@ class ListingsController extends Controller
                 //     ->get();
                 // $billDoc= null;
                 // $allDocs = $inspectionTaskMaintenance
-                    // ->concat($billDoc);
+                // ->concat($billDoc);
                 $allDocs = $inspectionTaskMaintenance;
-                    
+
 
 
                 $sortedDocs = $allDocs->sortByDesc('created_at');
@@ -1436,9 +1389,11 @@ class ListingsController extends Controller
                 // return $combinedDocs;
             } else {
 
-                $inspectionTaskMaintenance = InspectionTaskMaintenanceDoc::where('listing_id', $id)->where('company_id', $company_id)->where('generated', '!=', null)->with(['property' => function ($query) {
-                    $query->addSelect('id', 'reference');
-                }])->get();
+                $inspectionTaskMaintenance = InspectionTaskMaintenanceDoc::where('listing_id', $id)->where('company_id', $company_id)->where('generated', '!=', null)->with([
+                    'property' => function ($query) {
+                        $query->addSelect('id', 'reference');
+                    }
+                ])->get();
 
 
                 // $billDoc = Bill::where('maintenance_id', $id)->where('company_id', $company_id)
@@ -1447,7 +1402,7 @@ class ListingsController extends Controller
                 //     ->with('property')
                 //     ->get();
 
-                $billDoc= null;
+                $billDoc = null;
 
                 $allDocs = $inspectionTaskMaintenance
                     ->concat($billDoc);

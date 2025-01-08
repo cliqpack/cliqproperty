@@ -45,25 +45,20 @@ class MaintenanceAssignSupplierController extends Controller
 
             );
 
-
             $validator = Validator::make($attributesNames, [
                 'supplier_id',
                 'job_id'
             ]);
+
             if ($validator->fails()) {
                 return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
             } else {
-                // return $request->supplier_id;
                 $maintenance = Maintenance::where('id', $request->job_id)->where('company_id', auth('api')->user()->company_id)->first();
                 $maintenanceId = $maintenance->id;
-                // return $maintenanceId;
                 $tenantID = $maintenance->tenant_id;
                 $property_id =  $maintenance['property_id'];
                 $maintenance->status = "Assigned";
                 $maintenance->update();
-
-                // $maintenance = Maintenance::where('id', $request->job_id)->update(["status" => "Assigned"]);
-
 
                 $maintenanceAssign = new MaintenanceAssignSupplier();
                 $maintenanceAssign->job_id = $request->job_id;
@@ -72,28 +67,19 @@ class MaintenanceAssignSupplierController extends Controller
                 $maintenanceAssign->assign_from = 'After_Approved';
                 $maintenanceAssign->save();
 
-                $message_action_name = "Maintenance";
+                $message_action_name = "Job";
                 $messsage_trigger_point = 'Assigned';
                 $data = [
                     "property_id" => $property_id,
                     "schedule_date" => $request->ins_date,
-                    // "status" => "Approved",
-                    // "start_time" =>  date('h:i:s a', strtotime($request->start_time)),
                     "tenant_contact_id" => $tenantID,
                     "id" => $maintenanceId,
                     "supplier_id" => $request->supplier_id
                 ];
 
                 $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
-
-                $value = $activityMessageTrigger->trigger();
-
-                $maintenances = new MaintenancesController();
-                $workOrder = $maintenances->workOrderPdf($maintenanceId, 'n');
-
-                // return $workOrder;
-
-
+                $activityMessageTrigger->trigger();
+                
                 return response()->json(['job_id' => $request->job_id, 'message' => 'successfull'], 200);
             }
         } catch (\Throwable $th) {

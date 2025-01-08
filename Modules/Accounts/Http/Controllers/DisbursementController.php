@@ -23,6 +23,7 @@ use Modules\Contacts\Entities\SupplierDetails;
 use Modules\Contacts\Entities\TenantFolio;
 use Modules\Properties\Entities\Properties;
 use stdClass;
+use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 
 class DisbursementController extends Controller
 {
@@ -41,13 +42,13 @@ class DisbursementController extends Controller
             $offset = $page_qty * ($request->page - 1);
             $dd = OwnerFolio::whereColumn('total_money', '<=', 'money_in')->orWhereColumn('balance', '<=', 'total_balance')
                 ->orWhere('next_disburse_date', '<=', date('Y-m-d'))->pluck('id')->toArray();
-            $owners  = OwnerFolio::whereIn('id', $dd)->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
+            $owners = OwnerFolio::whereIn('id', $dd)->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
             $agencySupplierId = SupplierDetails::select('id')->where('company_id', auth('api')->user()->company_id)->where('system_folio', true)->first();
             if ($type === 'DueOwners') {
                 if ($request->q != 'null') {
                     $properties = DB::table('owner_folios')->join('properties', 'properties.id', '=', 'owner_folios.property_id')->groupBy('owner_folios.property_id')->where('properties.reference', 'like', '%' . $request->q . '%')->pluck('owner_folios.property_id');
                     $ownerContacts = DB::table('owner_folios')->join('owner_contacts', 'owner_contacts.id', '=', 'owner_folios.owner_contact_id')->groupBy('owner_folios.owner_contact_id')->where('owner_contacts.reference', 'like', '%' . $request->q . '%')->pluck('owner_folios.owner_contact_id');
-                    $disbursementList  = OwnerFolio::whereIn('id', $dd)->where('company_id', auth('api')->user()->company_id)
+                    $disbursementList = OwnerFolio::whereIn('id', $dd)->where('company_id', auth('api')->user()->company_id)
                         ->where('status', true)
                         ->where('next_disburse_date', 'LIKE', '%' . $request->q . '%')
                         ->where('folio_code', 'LIKE', '%' . $request->q . '%')
@@ -55,18 +56,26 @@ class DisbursementController extends Controller
                         ->orWhereIn('owner_contact_id', $ownerContacts)
                         ->with('disbursed', 'ownerContacts:reference,id,user_id,contact_id,property_id,email', 'ownerProperties:id,reference', 'owner_payment:id,owner_contact_id,method', 'propertyData', 'propertyData.property_address', 'total_due_invoice', 'ownerContacts.owner_address', 'total_deposit', 'total_withdraw')
                         ->with('multipleOwnerProperty', 'multipleOwnerProperty.tenantFolio', 'multipleOwnerProperty.property_address', 'multipleOwnerProperty.tenantFolio.tenantContact')
-                        ->with(['bill' => function ($q) {
-                            $q->where('property_id', NULL)->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
-                            $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
-                        }])
+                        ->with([
+                            'bill' => function ($q) {
+                                $q->where('property_id', NULL)->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
+                                $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
+                            }
+                        ])
                         ->with([
                             'total_withdraw' => function ($q) {
                                 $q->where('reverse_status', NULL)->where('folio_type', 'Owner')->where('type', 'Withdraw')->whereIn('allocation', ['Folio Withdraw', 'Journal'])->where('disbursed', 0);
@@ -124,7 +133,7 @@ class DisbursementController extends Controller
                         ->orderBy($request->sortField, $request->sortValue)
                         ->get();
 
-                    $disbursementListAll  = OwnerFolio::whereIn('id', $dd)
+                    $disbursementListAll = OwnerFolio::whereIn('id', $dd)
                         ->where('next_disburse_date', 'LIKE', '%' . $request->q . '%')
                         ->where('folio_code', 'LIKE', '%' . $request->q . '%')
                         ->where('status', true)
@@ -133,23 +142,31 @@ class DisbursementController extends Controller
                         ->orWhereIn('owner_contact_id', $ownerContacts)
                         ->count();
                 } else {
-                    $disbursementList  = OwnerFolio::whereIn('id', $dd)
+                    $disbursementList = OwnerFolio::whereIn('id', $dd)
                         ->where('status', true)
                         ->where('company_id', auth('api')->user()->company_id)
                         ->with('disbursed', 'ownerContacts:reference,id,user_id,contact_id,property_id,email', 'ownerProperties:id,reference', 'owner_payment:id,owner_contact_id,method', 'propertyData', 'propertyData.property_address', 'total_due_invoice', 'ownerContacts.owner_address', 'total_deposit')
                         ->with('multipleOwnerProperty', 'multipleOwnerProperty.tenantFolio', 'multipleOwnerProperty.property_address', 'multipleOwnerProperty.tenantFolio.tenantContact')
-                        ->with(['bill' => function ($q) {
-                            $q->where('property_id', NULL)->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
-                            $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
-                        }])
+                        ->with([
+                            'bill' => function ($q) {
+                                $q->where('property_id', NULL)->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
+                                $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
+                            }
+                        ])
                         ->with([
                             'total_withdraw' => function ($q) {
                                 $q->where('reverse_status', NULL)->where('folio_type', 'Owner')->where('type', 'Withdraw')->whereIn('allocation', ['Folio Withdraw', 'Journal'])->where('disbursed', 0);
@@ -206,7 +223,7 @@ class DisbursementController extends Controller
                         ->offset($offset)->limit($page_qty)
                         ->orderBy($request->sortField, $request->sortValue)
                         ->get();
-                    $disbursementListAll  = OwnerFolio::where('company_id', auth('api')->user()->company_id)
+                    $disbursementListAll = OwnerFolio::where('company_id', auth('api')->user()->company_id)
                         ->where('status', true)
                         ->count();
                 }
@@ -214,7 +231,7 @@ class DisbursementController extends Controller
                 if ($request->q != 'null') {
                     $properties = DB::table('owner_folios')->join('properties', 'properties.id', '=', 'owner_folios.property_id')->groupBy('owner_folios.property_id')->where('properties.reference', 'like', '%' . $request->q . '%')->pluck('owner_folios.property_id');
                     $ownerContacts = DB::table('owner_folios')->join('owner_contacts', 'owner_contacts.id', '=', 'owner_folios.owner_contact_id')->groupBy('owner_folios.owner_contact_id')->where('owner_contacts.reference', 'like', '%' . $request->q . '%')->pluck('owner_folios.owner_contact_id');
-                    $disbursementList  = OwnerFolio::where('company_id', auth('api')->user()->company_id)
+                    $disbursementList = OwnerFolio::where('company_id', auth('api')->user()->company_id)
                         ->where('status', true)
                         ->where('next_disburse_date', 'LIKE', '%' . $request->q . '%')
                         ->where('folio_code', 'LIKE', '%' . $request->q . '%')
@@ -222,18 +239,26 @@ class DisbursementController extends Controller
                         ->orWhereIn('owner_contact_id', $ownerContacts)
                         ->with('disbursed', 'ownerContacts:reference,id,user_id,contact_id,property_id,email', 'ownerProperties:id,reference', 'owner_payment:id,owner_contact_id,method', 'propertyData', 'propertyData.property_address', 'total_due_invoice', 'ownerContacts.owner_address', 'total_deposit', 'total_withdraw')
                         ->with('multipleOwnerProperty', 'multipleOwnerProperty.tenantFolio', 'multipleOwnerProperty.property_address', 'multipleOwnerProperty.tenantFolio.tenantContact')
-                        ->with(['bill' => function ($q) {
-                            $q->where('property_id', NULL)->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
-                            $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
-                        }])
+                        ->with([
+                            'bill' => function ($q) {
+                                $q->where('property_id', NULL)->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
+                                $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
+                            }
+                        ])
                         ->with([
                             'total_withdraw' => function ($q) {
                                 $q->where('reverse_status', NULL)->where('folio_type', 'Owner')->where('type', 'Withdraw')->whereIn('allocation', ['Folio Withdraw', 'Journal'])->where('disbursed', 0);
@@ -291,29 +316,39 @@ class DisbursementController extends Controller
                         ->orderBy($request->sortField, $request->sortValue)
                         ->get();
 
-                    $disbursementListAll  = OwnerFolio::where('company_id', auth('api')->user()->company_id)
+                    $disbursementListAll = OwnerFolio::where('company_id', auth('api')->user()->company_id)
                         ->where('status', true)
                         ->count();
                 } else {
-                    $disbursementList  = OwnerFolio::where('company_id', auth('api')->user()->company_id)
+                    $disbursementList = OwnerFolio::where('company_id', auth('api')->user()->company_id)
                         ->where('status', true)
                         ->with('disbursed', 'ownerContacts:reference,id,user_id,contact_id,property_id,email', 'ownerProperties:id,reference', 'owner_payment:id,owner_contact_id,method', 'propertyData', 'propertyData.property_address', 'total_due_invoice', 'ownerContacts.owner_address', 'total_deposit', 'total_withdraw')
                         ->with('multipleOwnerProperty', 'multipleOwnerProperty.tenantFolio', 'multipleOwnerProperty.property_address', 'multipleOwnerProperty.tenantFolio.tenantContact')
-                        ->with(['multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
-                            $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
-                        }])
-                        ->with(['bill' => function ($q) {
-                            $q->where('property_id', NULL)->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
-                            $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
-                        }])
-                        ->with(['multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
-                            $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
-                        }])
+                        ->with([
+                            'multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
+                                $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'bill' => function ($q) {
+                                $q->where('property_id', NULL)->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.propertyBill' => function ($q) use ($dd) {
+                                $q->whereIn('owner_folio_id', $dd)->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
+                            }
+                        ])
+                        ->with([
+                            'multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
+                                $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
+                            }
+                        ])
                         ->with([
                             'total_withdraw' => function ($q) {
                                 $q->where('reverse_status', NULL)->where('folio_type', 'Owner')->where('type', 'Withdraw')->whereIn('allocation', ['Folio Withdraw', 'Journal'])->where('disbursed', 0);
@@ -371,14 +406,14 @@ class DisbursementController extends Controller
                         ->orderBy($request->sortField, $request->sortValue)
                         ->get();
 
-                    $disbursementListAll  = OwnerFolio::where('company_id', auth('api')->user()->company_id)
+                    $disbursementListAll = OwnerFolio::where('company_id', auth('api')->user()->company_id)
                         ->where('status', true)
                         ->count();
                 }
             } elseif ($type === 'AllSuppliers') {
                 if ($request->q != 'null') {
                     $supplierContact = DB::table('supplier_details')->join('supplier_contacts', 'supplier_contacts.id', '=', 'supplier_details.supplier_contact_id')->groupBy('supplier_details.supplier_contact_id')->where('supplier_contacts.reference', 'like', '%' . $request->q . '%')->pluck('supplier_details.supplier_contact_id');
-                    $disbursementList  = SupplierDetails::where('company_id', auth('api')->user()->company_id)
+                    $disbursementList = SupplierDetails::where('company_id', auth('api')->user()->company_id)
                         ->where('folio_code', 'LIKE', '%' . $request->q . '%')
                         ->orWhereIn('supplier_contact_id', $supplierContact)
                         ->with('supplierContact:reference,id,contact_id,email', 'supplierPayment')
@@ -388,9 +423,9 @@ class DisbursementController extends Controller
                         ->offset($offset)->limit($page_qty)
                         ->orderBy($request->sortField, $request->sortValue)
                         ->get();
-                    $disbursementListAll  = SupplierDetails::where('company_id', auth('api')->user()->company_id)->count();
+                    $disbursementListAll = SupplierDetails::where('company_id', auth('api')->user()->company_id)->count();
                 } else {
-                    $disbursementList  = SupplierDetails::where('company_id', auth('api')->user()->company_id)
+                    $disbursementList = SupplierDetails::where('company_id', auth('api')->user()->company_id)
                         ->with('supplierContact:reference,id,contact_id,email', 'supplierPayment')
                         ->withSum('total_bills_pending', 'amount')
                         ->withSum('total_due_invoice', 'amount')
@@ -398,7 +433,7 @@ class DisbursementController extends Controller
                         ->offset($offset)->limit($page_qty)
                         ->orderBy($request->sortField, $request->sortValue)
                         ->get();
-                    $disbursementListAll  = SupplierDetails::where('company_id', auth('api')->user()->company_id)->count();
+                    $disbursementListAll = SupplierDetails::where('company_id', auth('api')->user()->company_id)->count();
                 }
             }
             $withdrawal = Withdrawal::where('status', false)->where('company_id', auth('api')->user()->company_id)->count();
@@ -420,9 +455,9 @@ class DisbursementController extends Controller
         try {
             $disbursementList = [];
             $owners = 0;
-            $owners  = OwnerFolio::where('next_disburse_date', '<=', date('Y-m-d'))->orWhereColumn('total_money', '<=', 'money_in')->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
+            $owners = OwnerFolio::where('next_disburse_date', '<=', date('Y-m-d'))->orWhereColumn('total_money', '<=', 'money_in')->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
             if ($type === 'DueOwners') {
-                $disbursementList  = OwnerFolio::where('next_disburse_date', '<=', date('Y-m-d'))
+                $disbursementList = OwnerFolio::where('next_disburse_date', '<=', date('Y-m-d'))
                     ->orWhereColumn('total_money', '<=', 'money_in')
                     ->where('status', true)
                     ->where('company_id', auth('api')->user()->company_id)
@@ -446,7 +481,7 @@ class DisbursementController extends Controller
                     ], 'amount')
                     ->get();
             } elseif ($type === 'AllOwners') {
-                $disbursementList  = OwnerFolio::where('company_id', auth('api')->user()->company_id)
+                $disbursementList = OwnerFolio::where('company_id', auth('api')->user()->company_id)
                     ->where('status', true)
                     ->with('disbursed', 'ownerContacts:reference,id,user_id,contact_id,property_id', 'ownerProperties:id,reference', 'owner_payment:id,owner_contact_id,method', 'propertyData', 'propertyData.property_address', 'total_due_invoice', 'ownerContacts.owner_address', 'total_deposit', 'total_withdraw')
                     ->withSum('total_bills_amount', 'amount')
@@ -468,7 +503,7 @@ class DisbursementController extends Controller
                     ], 'amount')
                     ->get();
             } elseif ($type === 'AllSuppliers') {
-                $disbursementList  = SupplierDetails::with('supplierContact:reference,id,contact_id', 'supplierPayment')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->withSum('total_due_invoice', 'paid')->where('company_id', auth('api')->user()->company_id)->get();
+                $disbursementList = SupplierDetails::with('supplierContact:reference,id,contact_id', 'supplierPayment')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->withSum('total_due_invoice', 'paid')->where('company_id', auth('api')->user()->company_id)->get();
             }
             $withdrawal = Withdrawal::where('status', false)->where('company_id', auth('api')->user()->company_id)->count();
             return response()->json(['data' => $disbursementList, 'withdrawal' => $withdrawal, 'owners' => $owners, 'message' => 'Successful'], 200);
@@ -479,7 +514,7 @@ class DisbursementController extends Controller
     public function totalDueDisbursement()
     {
         try {
-            $owners  = OwnerFolio::where('next_disburse_date', '<=', date('Y-m-d'))->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
+            $owners = OwnerFolio::where('next_disburse_date', '<=', date('Y-m-d'))->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
             return response()->json(['data' => $owners, 'message' => 'Successful'], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -489,7 +524,7 @@ class DisbursementController extends Controller
     public function allSupplierDisbursementList()
     {
         try {
-            $SupplierdisbursementList  = SupplierDetails::with('supplierContact:reference,id')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->get();
+            $SupplierdisbursementList = SupplierDetails::with('supplierContact:reference,id')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->get();
             return response()->json(['data' => $SupplierdisbursementList, 'message' => 'Successful'], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
@@ -619,27 +654,27 @@ class DisbursementController extends Controller
                         $triggerPropertyBill->triggerDisbursement($ownContactId->owner_contact_id, $value['id'], $value['property_id'], $totalPayout);
 
                         $receipt = new Receipt();
-                        $receipt->property_id    = $value['property_id'];
-                        $receipt->folio_id       = $value['id'];
+                        $receipt->property_id = $value['property_id'];
+                        $receipt->folio_id = $value['id'];
                         $receipt->owner_folio_id = $value['id'];
-                        $receipt->folio_type     = "Owner";
-                        $receipt->contact_id     = NULL;
-                        $receipt->amount         = $totalPayout;
-                        $receipt->summary         = "Withdrawal by EFT to owner";
-                        $receipt->receipt_date   = date('Y-m-d');
+                        $receipt->folio_type = "Owner";
+                        $receipt->contact_id = NULL;
+                        $receipt->amount = $totalPayout;
+                        $receipt->summary = "Withdrawal by EFT to owner";
+                        $receipt->receipt_date = date('Y-m-d');
                         $receipt->payment_method = "eft";
-                        $receipt->from           = "Owner";
-                        $receipt->type           = "Withdraw";
-                        $receipt->new_type       = 'Withdrawal';
-                        $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                        $receipt->updated_by     = "";
-                        $receipt->from_folio_id  = $value['id'];
+                        $receipt->from = "Owner";
+                        $receipt->type = "Withdraw";
+                        $receipt->new_type = 'Withdrawal';
+                        $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                        $receipt->updated_by = "";
+                        $receipt->from_folio_id = $value['id'];
                         $receipt->from_folio_type = "Owner";
-                        $receipt->to_folio_id    = NULL;
-                        $receipt->to_folio_type  = NULL;
-                        $receipt->status         = "Cleared";
-                        $receipt->cleared_date   = Date('Y-m-d');
-                        $receipt->company_id     = auth('api')->user()->company_id;
+                        $receipt->to_folio_id = NULL;
+                        $receipt->to_folio_type = NULL;
+                        $receipt->status = "Cleared";
+                        $receipt->cleared_date = Date('Y-m-d');
+                        $receipt->company_id = auth('api')->user()->company_id;
                         $receipt->save();
 
 
@@ -748,7 +783,7 @@ class DisbursementController extends Controller
                         $disbursement->created_by = auth('api')->user()->id;
                         $disbursement->updated_by = NULL;
                         $disbursement->date = date('Y-m-d');
-                        $disbursement->company_id     = auth('api')->user()->company_id;
+                        $disbursement->company_id = auth('api')->user()->company_id;
                         $disbursement->save();
 
                         $ownerPayment = OwnerFolio::where('id', $value['id'])->with('owner_payment')->first();
@@ -853,9 +888,21 @@ class DisbursementController extends Controller
                         $triggerDocument = new DocumentGenerateController();
                         $triggerDocument->generateDisbursementDocument($data);
                     }
+
+                    /* Start: Setup and trigger activity message */
+                    $message_action_name = "Owner Statement";
+                    $messsage_trigger_point = 'Disbursed';
+                    $data = [
+                        "property_id" => $value["property_id"],
+                        "status" => "Disbursed",
+                        "id" => $value["id"],
+                    ];
+                    $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                    $activityMessageTrigger->trigger();
+                    /* End: Setup and trigger activity message */
                 }
                 if ($request->includeSupplier === true) {
-                    $SupplierdisbursementList  = SupplierDetails::where('company_id', auth('api')->user()->company_id)->with('supplierContact:reference,id', 'supplierPayment')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->get();
+                    $SupplierdisbursementList = SupplierDetails::where('company_id', auth('api')->user()->company_id)->with('supplierContact:reference,id', 'supplierPayment')->withSum('total_bills_pending', 'amount')->withSum('total_due_invoice', 'amount')->get();
                     foreach ($SupplierdisbursementList as $value) {
                         if (($value['balance'] - $value['uncleared']) > 0) {
                             $bills = Bill::where('supplier_folio_id', $value['id'])->where('status', 'Paid')->where('company_id', auth('api')->user()->company_id)->where('disbursed', 0)->get();
@@ -871,47 +918,47 @@ class DisbursementController extends Controller
                                 $message = "Withdraw by " . $value['supplierPayment'][0]['payment_method'] . ' to supplier ' . $value['supplierContact']['reference'];
                             }
                             $receipt = new Receipt();
-                            $receipt->property_id    = NULL;
-                            $receipt->folio_id       = $value['id'];
+                            $receipt->property_id = NULL;
+                            $receipt->folio_id = $value['id'];
                             $receipt->supplier_folio_id = $value['id'];
-                            $receipt->folio_type     = "Supplier";
-                            $receipt->contact_id     = $value['supplierContact']['contact_id'];
-                            $receipt->amount         = ($value['balance'] - $value['uncleared']);
-                            $receipt->summary        = $message;
-                            $receipt->receipt_date   = date('Y-m-d');
+                            $receipt->folio_type = "Supplier";
+                            $receipt->contact_id = $value['supplierContact']['contact_id'];
+                            $receipt->amount = ($value['balance'] - $value['uncleared']);
+                            $receipt->summary = $message;
+                            $receipt->receipt_date = date('Y-m-d');
                             $receipt->payment_method = "eft";
-                            $receipt->from           = "Supplier";
-                            $receipt->type           = "Withdraw";
-                            $receipt->new_type       = 'Withdrawal';
-                            $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                            $receipt->updated_by     = "";
-                            $receipt->from_folio_id  = $value['id'];
+                            $receipt->from = "Supplier";
+                            $receipt->type = "Withdraw";
+                            $receipt->new_type = 'Withdrawal';
+                            $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                            $receipt->updated_by = "";
+                            $receipt->from_folio_id = $value['id'];
                             $receipt->from_folio_type = "Supplier";
-                            $receipt->to_folio_id    = $value['id'];
-                            $receipt->to_folio_type  = "Supplier";
-                            $receipt->status         = "Cleared";
-                            $receipt->cleared_date   = Date('Y-m-d');
-                            $receipt->company_id     = auth('api')->user()->company_id;
+                            $receipt->to_folio_id = $value['id'];
+                            $receipt->to_folio_type = "Supplier";
+                            $receipt->status = "Cleared";
+                            $receipt->cleared_date = Date('Y-m-d');
+                            $receipt->company_id = auth('api')->user()->company_id;
                             $receipt->save();
 
-                            $receiptDetails                 = new ReceiptDetails();
-                            $receiptDetails->receipt_id     = $receipt->id;
-                            $receiptDetails->allocation     = "";
-                            $receiptDetails->description    = $message;
-                            $receiptDetails->payment_type   = "";
-                            $receiptDetails->amount         = ($value['balance'] - $value['uncleared']);
-                            $receiptDetails->folio_id       = $value['id'];
-                            $receiptDetails->folio_type     = "Supplier";
-                            $receiptDetails->account_id     = NULL;
-                            $receiptDetails->type           = "Withdraw";
-                            $receiptDetails->from_folio_id  = $value['id'];
+                            $receiptDetails = new ReceiptDetails();
+                            $receiptDetails->receipt_id = $receipt->id;
+                            $receiptDetails->allocation = "";
+                            $receiptDetails->description = $message;
+                            $receiptDetails->payment_type = "";
+                            $receiptDetails->amount = ($value['balance'] - $value['uncleared']);
+                            $receiptDetails->folio_id = $value['id'];
+                            $receiptDetails->folio_type = "Supplier";
+                            $receiptDetails->account_id = NULL;
+                            $receiptDetails->type = "Withdraw";
+                            $receiptDetails->from_folio_id = $value['id'];
                             $receiptDetails->from_folio_type = "Supplier";
-                            $receiptDetails->to_folio_id    = $value['id'];
-                            $receiptDetails->to_folio_type  = "Supplier";
-                            $receiptDetails->supplier_folio_id  = $value['id'];
-                            $receiptDetails->pay_type  = "debit";
-                            $receiptDetails->company_id     = auth('api')->user()->company_id;
-                            $receiptDetails->disbursed      = 1;
+                            $receiptDetails->to_folio_id = $value['id'];
+                            $receiptDetails->to_folio_type = "Supplier";
+                            $receiptDetails->supplier_folio_id = $value['id'];
+                            $receiptDetails->pay_type = "debit";
+                            $receiptDetails->company_id = auth('api')->user()->company_id;
+                            $receiptDetails->disbursed = 1;
                             $receiptDetails->save();
 
                             $ledger = FolioLedger::where('folio_id', $value['id'])->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
@@ -955,7 +1002,7 @@ class DisbursementController extends Controller
                             $disbursement->date = date('Y-m-d');
                             $disbursement->created_by = auth('api')->user()->id;
                             $disbursement->updated_by = NULL;
-                            $disbursement->company_id     = auth('api')->user()->company_id;
+                            $disbursement->company_id = auth('api')->user()->company_id;
                             $disbursement->save();
 
                             SupplierDetails::where('id', $value['id'])->update([
@@ -1036,7 +1083,7 @@ class DisbursementController extends Controller
             });
             return response()->json([
                 'message' => 'Disbursed',
-                'Status'  => 'Success'
+                'Status' => 'Success'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
@@ -1047,23 +1094,31 @@ class DisbursementController extends Controller
         try {
             DB::transaction(function () use ($request, $ownerFolioId) {
                 $agencySupplierId = SupplierDetails::select('id')->where('company_id', auth('api')->user()->company_id)->where('system_folio', true)->first();
-                $owner  = OwnerFolio::where('id', $ownerFolioId)
+                $owner = OwnerFolio::where('id', $ownerFolioId)
                     ->where('company_id', auth('api')->user()->company_id)
                     ->where('status', true)
                     ->with('disbursed', 'ownerContacts:reference,id,user_id,contact_id,property_id,email', 'ownerProperties:id,reference', 'owner_payment:id,owner_contact_id,method', 'propertyData', 'propertyData.property_address', 'total_due_invoice', 'ownerContacts.owner_address', 'total_deposit', 'total_withdraw')
                     ->with('multipleOwnerProperty', 'multipleOwnerProperty.tenantFolio', 'multipleOwnerProperty.property_address', 'multipleOwnerProperty.tenantFolio.tenantContact')
-                    ->with(['bill' => function ($q) {
-                        $q->where('property_id', NULL)->where('disbursed', 0);
-                    }])
-                    ->with(['multipleOwnerProperty.propertyBill' => function ($q) {
-                        $q->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
-                    }])
-                    ->with(['multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
-                        $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
-                    }])
-                    ->with(['multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
-                        $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
-                    }])
+                    ->with([
+                        'bill' => function ($q) {
+                            $q->where('property_id', NULL)->where('disbursed', 0);
+                        }
+                    ])
+                    ->with([
+                        'multipleOwnerProperty.propertyBill' => function ($q) {
+                            $q->whereIn('status', ['Paid', 'Unpaid'])->where('disbursed', 0);
+                        }
+                    ])
+                    ->with([
+                        'multipleOwnerProperty.tenantFolio.totalPropertyPaidRent' => function ($q) {
+                            $q->where('from_folio_type', 'Tenant')->where('reverse_status', NULL)->where('allocation', 'Rent')->where('disbursed', 0);
+                        }
+                    ])
+                    ->with([
+                        'multipleOwnerProperty.tenantFolio.totalPaidInvoice' => function ($q) {
+                            $q->where('from_folio_type', 'Tenant')->where('allocation', 'Invoice')->where('reverse_status', NULL)->where('disbursed', 0);
+                        }
+                    ])
                     ->with([
                         'total_withdraw' => function ($q) {
                             $q->where('reverse_status', NULL)->where('folio_type', 'Owner')->where('type', 'Withdraw')->whereIn('allocation', ['Folio Withdraw', 'Journal'])->where('disbursed', 0);
@@ -1268,31 +1323,31 @@ class DisbursementController extends Controller
                     $triggerPropertyBill = new TriggerPropertyFeeBasedBillController();
                     $triggerPropertyBill->triggerDisbursement($ownContactId->owner_contact_id, $owner_folio_id, $owner->property_id, $totalPayout);
                     $receipt = new Receipt();
-                    $receipt->property_id    = $owner->property_id;
-                    $receipt->folio_id       = $owner_folio_id;
+                    $receipt->property_id = $owner->property_id;
+                    $receipt->folio_id = $owner_folio_id;
                     $receipt->owner_folio_id = $owner_folio_id;
-                    $receipt->folio_type     = "Owner";
-                    $receipt->contact_id     = $contact_id;
-                    $receipt->amount         = $totalPayout;
-                    $receipt->summary        = "Withdrawal by EFT to owner";
-                    $receipt->receipt_date   = date('Y-m-d');
+                    $receipt->folio_type = "Owner";
+                    $receipt->contact_id = $contact_id;
+                    $receipt->amount = $totalPayout;
+                    $receipt->summary = "Withdrawal by EFT to owner";
+                    $receipt->receipt_date = date('Y-m-d');
                     $receipt->payment_method = "eft";
-                    $receipt->from           = "Owner";
-                    $receipt->type           = "Withdraw";
-                    $receipt->new_type       = 'Withdrawal';
-                    $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                    $receipt->updated_by     = "";
-                    $receipt->from_folio_id  = $owner_folio_id;
+                    $receipt->from = "Owner";
+                    $receipt->type = "Withdraw";
+                    $receipt->new_type = 'Withdrawal';
+                    $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                    $receipt->updated_by = "";
+                    $receipt->from_folio_id = $owner_folio_id;
                     $receipt->from_folio_type = "Owner";
-                    $receipt->to_folio_id    = NULL;
-                    $receipt->to_folio_type  = NULL;
-                    $receipt->status         = "Cleared";
-                    $receipt->cleared_date   = Date('Y-m-d');
-                    $receipt->company_id     = auth('api')->user()->company_id;
+                    $receipt->to_folio_id = NULL;
+                    $receipt->to_folio_type = NULL;
+                    $receipt->status = "Cleared";
+                    $receipt->cleared_date = Date('Y-m-d');
+                    $receipt->company_id = auth('api')->user()->company_id;
                     $receipt->save();
 
                     $disburseReceipt = new DisbursementDetailsController();
-                    $withdrawReceiptDetailsId = $disburseReceipt->receiptDetails($receipt->id, '', "Withdrawal by EFT to owner", 'eft', $totalPayout,  $owner_folio_id, 'Owner', NULL, 'Withdraw',  $owner_folio_id, 'Owner', NULL, NULL, auth('api')->user()->company_id, 1, '', 0, 'debit', 'Owner');
+                    $withdrawReceiptDetailsId = $disburseReceipt->receiptDetails($receipt->id, '', "Withdrawal by EFT to owner", 'eft', $totalPayout, $owner_folio_id, 'Owner', NULL, 'Withdraw', $owner_folio_id, 'Owner', NULL, NULL, auth('api')->user()->company_id, 1, '', 0, 'debit', 'Owner');
 
                     $ledger = FolioLedger::where('folio_id', $owner_folio_id)->where('folio_type', 'Owner')->orderBy('id', 'desc')->first();
                     $ledger->updated = 1;
@@ -1354,13 +1409,13 @@ class DisbursementController extends Controller
 
                     $next_disburse_date = NULL;
                     if ($regular_intervals === "Weekly") {
-                        $next_disburse_date = Carbon::createFromFormat('Y-m-d',  $owner->next_disburse_date);
+                        $next_disburse_date = Carbon::createFromFormat('Y-m-d', $owner->next_disburse_date);
                         $next_disburse_date = $next_disburse_date->addDays(7);
                     } elseif ($regular_intervals === "Fortnightly") {
-                        $next_disburse_date = Carbon::createFromFormat('Y-m-d',  $owner->next_disburse_date);
+                        $next_disburse_date = Carbon::createFromFormat('Y-m-d', $owner->next_disburse_date);
                         $next_disburse_date = $next_disburse_date->addDays(14);
                     } elseif ($regular_intervals === "Monthly") {
-                        $next_disburse_date = Carbon::createFromFormat('Y-m-d',  $owner->next_disburse_date);
+                        $next_disburse_date = Carbon::createFromFormat('Y-m-d', $owner->next_disburse_date);
                         $next_disburse_date = $next_disburse_date->addDays(30);
                     }
 
@@ -1378,24 +1433,24 @@ class DisbursementController extends Controller
                     $disbursement = new Disbursement();
                     $disbursement->receipt_id = $receipt->id;
                     $disbursement->reference = $owner_contact_reference;
-                    $disbursement->property_id =  $propertyId;
+                    $disbursement->property_id = $propertyId;
                     $disbursement->folio_id = $owner_folio_id;
                     $disbursement->folio_type = "Owner";
                     $disbursement->last = NULL;
                     $disbursement->due = NULL;
                     $disbursement->pay_by = NULL;
-                    $disbursement->withhold =  $withhold_amount;
+                    $disbursement->withhold = $withhold_amount;
                     $disbursement->bills_due = $total_bills_amount_sum_amount === NULL ? 0 : $total_bills_amount_sum_amount;
                     $disbursement->fees_raised = $totalFeesRaised;
-                    $disbursement->payout = ($total_due_rent_sum_amount +  $total_due_invoice_sum_amount) - ($total_bills_amount_sum_amount + $withhold_amount);
+                    $disbursement->payout = ($total_due_rent_sum_amount + $total_due_invoice_sum_amount) - ($total_bills_amount_sum_amount + $withhold_amount);
                     $disbursement->rent = $total_due_rent_sum_amount === NULL ? 0 : $total_due_rent_sum_amount;
                     $disbursement->bills = $total_bills_amount_sum_amount === NULL ? 0 : $total_bills_amount_sum_amount;
-                    $disbursement->invoices =  $total_due_invoice_sum_amount === NULL ? 0 :  $total_due_invoice_sum_amount;
+                    $disbursement->invoices = $total_due_invoice_sum_amount === NULL ? 0 : $total_due_invoice_sum_amount;
                     $disbursement->preview = NULL;
                     $disbursement->created_by = auth('api')->user()->id;
                     $disbursement->updated_by = NULL;
                     $disbursement->date = date('Y-m-d');
-                    $disbursement->company_id     = auth('api')->user()->company_id;
+                    $disbursement->company_id = auth('api')->user()->company_id;
                     $disbursement->save();
 
                     $ownerPayment = OwnerFolio::where('id', $owner_folio_id)->with('owner_payment')->first();
@@ -1449,7 +1504,7 @@ class DisbursementController extends Controller
                                 $totalDisbursedAmount = $totalDisbursedAmount - $withdrawPayment;
                             }
                             $withdraw = new Withdrawal();
-                            $withdraw->property_id =  $propertyId;
+                            $withdraw->property_id = $propertyId;
                             $withdraw->receipt_id = $receipt->id;
                             $withdraw->disbursement_id = $disbursement->id;
                             $withdraw->create_date = date('Y-m-d');
@@ -1480,7 +1535,7 @@ class DisbursementController extends Controller
                         'withdraw' => $total_withdraw_sum_amount,
                         'money_in' => $pushMoneyIn,
                         'money_out' => $pushMoneyOut,
-                        'uncleared' =>  $uncleared,
+                        'uncleared' => $uncleared,
                         'withhold' => $withhold_amount,
                         'opening_balance' => ($opening_balance ? $opening_balance : 0),
                         'remaining_balance' => $uncleared + $withhold_amount,
@@ -1500,10 +1555,22 @@ class DisbursementController extends Controller
                     $triggerDocument = new DocumentGenerateController();
                     $triggerDocument->generateDisbursementDocument($data);
                 }
+
+                /* Start: Setup and trigger activity message */
+                $message_action_name = "Owner Statement";
+                $messsage_trigger_point = 'Disbursed';
+                $data = [
+                    "property_id" => $propertyId,
+                    "status" => "Disbursed",
+                    "id" => $ownerFolioId,
+                ];
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
+                /* End: Setup and trigger activity message */
             });
             return response()->json([
                 'message' => 'Disbursed',
-                'Status'  => 'Success'
+                'Status' => 'Success'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
@@ -1623,7 +1690,7 @@ class DisbursementController extends Controller
                 return $pdf;
             }
             return response()->json([
-                'Status'  => 'Success',
+                'Status' => 'Success',
             ], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
@@ -1648,47 +1715,47 @@ class DisbursementController extends Controller
                         $pay_by = !empty($value['supplier_payment']) ? $value['supplier_payment'][0]['payment_method'] : NULL;
 
                         $receipt = new Receipt();
-                        $receipt->property_id    = NULL;
-                        $receipt->folio_id       = $value['id'];
-                        $receipt->supplier_folio_id       = $value['id'];
-                        $receipt->folio_type     = "Supplier";
-                        $receipt->contact_id     = $value['supplier_contact']['contact_id'];
-                        $receipt->amount         = ($value['balance'] - $value['uncleared']);
-                        $receipt->summary         = "Withdraw by " . $pay_by . ' to supplier ' . $value['supplier_contact']['reference'];
-                        $receipt->receipt_date   = date('Y-m-d');
+                        $receipt->property_id = NULL;
+                        $receipt->folio_id = $value['id'];
+                        $receipt->supplier_folio_id = $value['id'];
+                        $receipt->folio_type = "Supplier";
+                        $receipt->contact_id = $value['supplier_contact']['contact_id'];
+                        $receipt->amount = ($value['balance'] - $value['uncleared']);
+                        $receipt->summary = "Withdraw by " . $pay_by . ' to supplier ' . $value['supplier_contact']['reference'];
+                        $receipt->receipt_date = date('Y-m-d');
                         $receipt->payment_method = "eft";
-                        $receipt->from           = "Supplier";
-                        $receipt->type           = "Withdraw";
-                        $receipt->new_type       = 'Withdrawal';
-                        $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                        $receipt->updated_by     = "";
-                        $receipt->from_folio_id  = $value['id'];
+                        $receipt->from = "Supplier";
+                        $receipt->type = "Withdraw";
+                        $receipt->new_type = 'Withdrawal';
+                        $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                        $receipt->updated_by = "";
+                        $receipt->from_folio_id = $value['id'];
                         $receipt->from_folio_type = "Supplier";
-                        $receipt->to_folio_id    = $value['id'];
-                        $receipt->to_folio_type  = "Supplier";
-                        $receipt->status         = "Cleared";
-                        $receipt->cleared_date   = Date('Y-m-d');
-                        $receipt->company_id     = auth('api')->user()->company_id;
+                        $receipt->to_folio_id = $value['id'];
+                        $receipt->to_folio_type = "Supplier";
+                        $receipt->status = "Cleared";
+                        $receipt->cleared_date = Date('Y-m-d');
+                        $receipt->company_id = auth('api')->user()->company_id;
                         $receipt->save();
 
-                        $receiptDetails                 = new ReceiptDetails();
-                        $receiptDetails->receipt_id     = $receipt->id;
-                        $receiptDetails->allocation     = "";
-                        $receiptDetails->description    = "Withdraw by " . $pay_by . ' to supplier ' . $value['supplier_contact']['reference'];
-                        $receiptDetails->payment_type   = "";
-                        $receiptDetails->amount         = ($value['balance'] - $value['uncleared']);
-                        $receiptDetails->folio_id       = $value['id'];
-                        $receiptDetails->folio_type     = "Supplier";
-                        $receiptDetails->account_id     = NULL;
-                        $receiptDetails->type           = "Withdraw";
-                        $receiptDetails->from_folio_id  = $value['id'];
+                        $receiptDetails = new ReceiptDetails();
+                        $receiptDetails->receipt_id = $receipt->id;
+                        $receiptDetails->allocation = "";
+                        $receiptDetails->description = "Withdraw by " . $pay_by . ' to supplier ' . $value['supplier_contact']['reference'];
+                        $receiptDetails->payment_type = "";
+                        $receiptDetails->amount = ($value['balance'] - $value['uncleared']);
+                        $receiptDetails->folio_id = $value['id'];
+                        $receiptDetails->folio_type = "Supplier";
+                        $receiptDetails->account_id = NULL;
+                        $receiptDetails->type = "Withdraw";
+                        $receiptDetails->from_folio_id = $value['id'];
                         $receiptDetails->from_folio_type = "Supplier";
-                        $receiptDetails->to_folio_id    = $value['id'];
-                        $receiptDetails->to_folio_type  = "Supplier";
-                        $receiptDetails->supplier_folio_id    = $value['id'];
-                        $receiptDetails->pay_type  = "debit";
-                        $receiptDetails->company_id     = auth('api')->user()->company_id;
-                        $receiptDetails->disbursed      = 1;
+                        $receiptDetails->to_folio_id = $value['id'];
+                        $receiptDetails->to_folio_type = "Supplier";
+                        $receiptDetails->supplier_folio_id = $value['id'];
+                        $receiptDetails->pay_type = "debit";
+                        $receiptDetails->company_id = auth('api')->user()->company_id;
+                        $receiptDetails->disbursed = 1;
                         $receiptDetails->save();
 
                         $ledger = FolioLedger::where('folio_id', $value['id'])->where('folio_type', 'Supplier')->orderBy('id', 'desc')->first();
@@ -1731,7 +1798,7 @@ class DisbursementController extends Controller
                         $disbursement->date = date('Y-m-d');
                         $disbursement->created_by = auth('api')->user()->id;
                         $disbursement->updated_by = NULL;
-                        $disbursement->company_id     = auth('api')->user()->company_id;
+                        $disbursement->company_id = auth('api')->user()->company_id;
                         $disbursement->save();
                         SupplierDetails::where('id', $value['id'])->update([
                             'balance' => $value['uncleared'],
@@ -1809,12 +1876,26 @@ class DisbursementController extends Controller
                                 }
                             }
                         }
+
+                        /* Start: Setup and trigger activity message */
+                        $message_action_name = "Supplier Statement";
+                        $messsage_trigger_point = 'Disbursed';
+                        $data = [
+                            "id" => $disbursement->id,
+                            "property_id" => null,
+                            "status" => "Disbursed",
+                            "folio_type" => "Supplier",
+                            "folio_id" => $value["supplier_contact"]["id"]
+                        ];
+                        $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                        $activityMessageTrigger->trigger();
+                        /* End: Setup and trigger activity message */
                     }
                 }
             });
             return response()->json([
                 'message' => 'Disbursed',
-                'Status'  => 'Success'
+                'Status' => 'Success'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
@@ -1831,20 +1912,20 @@ class DisbursementController extends Controller
                     $property = Properties::where('id', $request->property_id)->first();
                     $accounts_company = Account::where('company_id', auth('api')->user()->company_id)->where('account_name', 'Sales Commission')->first();
                     $bill = new Bill();
-                    $bill->supplier_contact_id      = $supplier->supplier_contact_id;
-                    $bill->billing_date             = Date('Y-m-d');
-                    $bill->bill_account_id          = $accounts_company->id;
-                    $bill->property_id              = $request->property_id;
-                    $bill->amount                   = $request->amount;
-                    $bill->priority                 = 'High';
-                    $bill->details                  = 'Commission for ' . $property->reference;
-                    $bill->include_tax              = 1;
-                    $bill->company_id               = auth('api')->user()->company_id;
-                    $bill->seller_folio_id           = $sellerFolioId;
+                    $bill->supplier_contact_id = $supplier->supplier_contact_id;
+                    $bill->billing_date = Date('Y-m-d');
+                    $bill->bill_account_id = $accounts_company->id;
+                    $bill->property_id = $request->property_id;
+                    $bill->amount = $request->amount;
+                    $bill->priority = 'High';
+                    $bill->details = 'Commission for ' . $property->reference;
+                    $bill->include_tax = 1;
+                    $bill->company_id = auth('api')->user()->company_id;
+                    $bill->seller_folio_id = $sellerFolioId;
                     $bill->approved = true;
                     $bill->save();
                 }
-                $seller  = SellerFolio::where('id', $sellerFolioId)
+                $seller = SellerFolio::where('id', $sellerFolioId)
                     ->where('company_id', auth('api')->user()->company_id)
                     ->with('sellerContacts.property')
                     ->withSum('total_bills_amount', 'amount')
@@ -1952,27 +2033,27 @@ class DisbursementController extends Controller
                 if ($checkPayout > 0) {
 
                     $receipt = new Receipt();
-                    $receipt->property_id    = $propertyId;
-                    $receipt->folio_id       = $sellerFolioId;
+                    $receipt->property_id = $propertyId;
+                    $receipt->folio_id = $sellerFolioId;
                     $receipt->seller_folio_id = $sellerFolioId;
-                    $receipt->folio_type     = "Seller";
-                    $receipt->contact_id     = $contact_id;
-                    $receipt->amount         = $totalPayout;
-                    $receipt->summary        = "Withdrawal by EFT to Seller";
-                    $receipt->receipt_date   = date('Y-m-d');
+                    $receipt->folio_type = "Seller";
+                    $receipt->contact_id = $contact_id;
+                    $receipt->amount = $totalPayout;
+                    $receipt->summary = "Withdrawal by EFT to Seller";
+                    $receipt->receipt_date = date('Y-m-d');
                     $receipt->payment_method = "eft";
-                    $receipt->from           = "Seller";
-                    $receipt->type           = "Withdraw";
-                    $receipt->new_type       = 'Withdrawal';
-                    $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                    $receipt->updated_by     = "";
-                    $receipt->from_folio_id  = $sellerFolioId;
+                    $receipt->from = "Seller";
+                    $receipt->type = "Withdraw";
+                    $receipt->new_type = 'Withdrawal';
+                    $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                    $receipt->updated_by = "";
+                    $receipt->from_folio_id = $sellerFolioId;
                     $receipt->from_folio_type = "Seller";
-                    $receipt->to_folio_id    = NULL;
-                    $receipt->to_folio_type  = NULL;
-                    $receipt->status         = "Cleared";
-                    $receipt->cleared_date   = Date('Y-m-d');
-                    $receipt->company_id     = auth('api')->user()->company_id;
+                    $receipt->to_folio_id = NULL;
+                    $receipt->to_folio_type = NULL;
+                    $receipt->status = "Cleared";
+                    $receipt->cleared_date = Date('Y-m-d');
+                    $receipt->company_id = auth('api')->user()->company_id;
                     $receipt->save();
 
                     $sellerfolio_withdraw = SellerFolio::where('id', $sellerFolioId)->first();
@@ -1982,7 +2063,7 @@ class DisbursementController extends Controller
                     ]);
 
                     $disburseReceipt = new DisbursementDetailsController();
-                    $withdrawReceiptDetailsId = $disburseReceipt->receiptDetails($receipt->id, '', "Withdrawal by EFT to Seller", 'eft', $totalPayout,  $sellerFolioId, 'Seller', NULL, 'Withdraw',  $sellerFolioId, 'Seller', NULL, NULL, auth('api')->user()->company_id, 1, '', 0, 'debit', 'Seller');
+                    $withdrawReceiptDetailsId = $disburseReceipt->receiptDetails($receipt->id, '', "Withdrawal by EFT to Seller", 'eft', $totalPayout, $sellerFolioId, 'Seller', NULL, 'Withdraw', $sellerFolioId, 'Seller', NULL, NULL, auth('api')->user()->company_id, 1, '', 0, 'debit', 'Seller');
 
                     $ledger = FolioLedger::where('folio_id', $bill['seller_folio_id'])->where('folio_type', 'Seller')->orderBy('id', 'desc')->first();
                     $ledger->updated = 1;
@@ -2045,24 +2126,24 @@ class DisbursementController extends Controller
                     $disbursement = new Disbursement();
                     $disbursement->receipt_id = $receipt->id;
                     $disbursement->reference = $seller_contact_reference;
-                    $disbursement->property_id =  $propertyId;
+                    $disbursement->property_id = $propertyId;
                     $disbursement->folio_id = $seller_folio_id;
                     $disbursement->folio_type = "Seller";
                     $disbursement->last = NULL;
                     $disbursement->due = NULL;
                     $disbursement->pay_by = NULL;
-                    $disbursement->withhold =  0;
+                    $disbursement->withhold = 0;
                     $disbursement->bills_due = $total_bills_amount_sum_amount === NULL ? 0 : $total_bills_amount_sum_amount;
                     $disbursement->fees_raised = 0;
                     $disbursement->payout = $totalPayout;
                     $disbursement->rent = 0;
                     $disbursement->bills = $total_bills_amount_sum_amount === NULL ? 0 : $total_bills_amount_sum_amount;
-                    $disbursement->invoices =  0;
+                    $disbursement->invoices = 0;
                     $disbursement->preview = NULL;
                     $disbursement->created_by = auth('api')->user()->id;
                     $disbursement->updated_by = NULL;
                     $disbursement->date = date('Y-m-d');
-                    $disbursement->company_id     = auth('api')->user()->company_id;
+                    $disbursement->company_id = auth('api')->user()->company_id;
                     $disbursement->save();
 
                     $sellerPayment = SellerFolio::where('id', $seller_folio_id)->with('sellerPayment')->first();
@@ -2118,7 +2199,7 @@ class DisbursementController extends Controller
                                 $totalDisbursedAmount = $totalDisbursedAmount - $withdrawPayment;
                             }
                             $withdraw = new Withdrawal();
-                            $withdraw->property_id =  $propertyId;
+                            $withdraw->property_id = $propertyId;
                             $withdraw->receipt_id = $receipt->id;
                             $withdraw->disbursement_id = $disbursement->id;
                             $withdraw->create_date = date('Y-m-d');
@@ -2139,7 +2220,7 @@ class DisbursementController extends Controller
             });
             return response()->json([
                 'message' => 'Disbursed',
-                'Status'  => 'Success'
+                'Status' => 'Success'
             ], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);

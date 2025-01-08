@@ -27,7 +27,7 @@ use Modules\Contacts\Entities\SellerFolio;
 use Modules\Contacts\Entities\SupplierDetails;
 use Modules\Contacts\Entities\TenantFolio;
 use Modules\Properties\Entities\Properties;
-use stdClass;
+use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 
 class ReceiptController extends Controller
 {
@@ -81,7 +81,12 @@ class ReceiptController extends Controller
 
     /**
      * THIS FUNCTION IS USED TO STORE THE FOLIO RECEIPT
-     * FOLIO CAN BE RECEIPTED TO OWNER OR TENANT
+     * CREATE FOLIO RECEIPT AND RECEIPT DETAILS
+     * CALCULATE TAX IF APPLICABLE
+     * Generate receipt document
+     * Record ledger details in the daily ledger
+     * Store owner transaction
+     * If payment method is not EFT, create a bank deposit list entry
      */
     public function folio_receipt_store(Request $request)
     {
@@ -89,82 +94,85 @@ class ReceiptController extends Controller
             DB::transaction(function () use ($request) {
                 $totalTaxAmount = 0;
                 $folio_receipt_amount = round($request->amount, 2);
+                // Create a new Receipt object and populate it with data from the request
                 $receipt = new Receipt();
-                $receipt->property_id    = $request->property_id;
-                $receipt->note           = $request->note;
-                $receipt->folio_id       = $request->folio_id;
-                $receipt->folio_type     = $request->folio_type;
+                $receipt->property_id = $request->property_id;
+                $receipt->note = $request->note;
+                $receipt->folio_id = $request->folio_id;
+                $receipt->folio_type = $request->folio_type;
+                // Set the specific folio type ID based on the folio type
                 if ($request->folio_type === 'Owner') {
-                    $receipt->owner_folio_id       = $request->folio_id;
+                    $receipt->owner_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Supplier') {
-                    $receipt->supplier_folio_id       = $request->folio_id;
+                    $receipt->supplier_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Tenant') {
-                    $receipt->tenant_folio_id        = $request->folio_id;
+                    $receipt->tenant_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Seller') {
-                    $receipt->seller_folio_id       = $request->folio_id;
+                    $receipt->seller_folio_id = $request->folio_id;
                 }
-                $receipt->contact_id     = $request->contact_id;
-                $receipt->amount         = $folio_receipt_amount;
-                $receipt->summary         = $request->description;
-                $receipt->receipt_date   = $request->invoiceDate;
+                $receipt->contact_id = $request->contact_id;
+                $receipt->amount = $folio_receipt_amount;
+                $receipt->summary = $request->description;
+                $receipt->receipt_date = $request->invoiceDate;
                 $receipt->payment_method = $request->pay_type;
-                $receipt->from           = $request->money_from;
-                $receipt->type           = "Folio Receipt";
-                $receipt->new_type       = 'Receipt';
-                $receipt->created_by     = $request->created_by;
-                $receipt->updated_by     = $request->updated_by;
-                $receipt->from_folio_id  = $request->folio_id;
+                $receipt->from = $request->money_from;
+                $receipt->type = "Folio Receipt";
+                $receipt->new_type = 'Receipt';
+                $receipt->created_by = $request->created_by;
+                $receipt->updated_by = $request->updated_by;
+                $receipt->from_folio_id = $request->folio_id;
                 $receipt->from_folio_type = $request->folio_type;
                 if ($request->pay_type === 'eft') {
-                    $receipt->status         = "Cleared";
-                    $receipt->cleared_date         = Date('Y-m-d');
+                    $receipt->status = "Cleared";
+                    $receipt->cleared_date = Date('Y-m-d');
                 } else {
-                    $receipt->status         = "Uncleared";
+                    $receipt->status = "Uncleared";
                 }
                 $receipt->company_id = auth('api')->user()->company_id;
                 if ($request->pay_type === 'cheque') {
-                    $receipt->cheque_drawer     = $request->chequeDetails['drawer'];
-                    $receipt->cheque_bank       = $request->chequeDetails['bank'];
-                    $receipt->cheque_branch     = $request->chequeDetails['branch'];
-                    $receipt->cheque_amount     = $folio_receipt_amount;
+                    $receipt->cheque_drawer = $request->chequeDetails['drawer'];
+                    $receipt->cheque_bank = $request->chequeDetails['bank'];
+                    $receipt->cheque_branch = $request->chequeDetails['branch'];
+                    $receipt->cheque_amount = $folio_receipt_amount;
                 }
                 $receipt->save();
                 $taxAmount = 0;
                 $coa = Account::where('id', $request->invoiceChart)->first();
+                // Calculate tax if applicable
                 if ($coa->tax == true) {
                     $includeTax = new TaxController();
                     $taxAmount = $includeTax->taxCalculation($folio_receipt_amount);
                 }
                 $totalTaxAmount = $taxAmount;
 
-                $receiptDetails                 = new ReceiptDetails();
-                $receiptDetails->receipt_id     = $receipt->id;
-                $receiptDetails->allocation     = "Folio Receipt";
-                $receiptDetails->description    = $request->description;
-                $receiptDetails->payment_type   = $request->pay_type;
-                $receiptDetails->amount         = $folio_receipt_amount;
-                $receiptDetails->taxAmount      = $taxAmount;
-                $receiptDetails->folio_id       = $request->folio_id;
-                $receiptDetails->folio_type     = $request->folio_type;
-                $receiptDetails->account_id     = $request->invoiceChart;
-                $receiptDetails->type           = "Deposit";
-                $receiptDetails->to_folio_id    = $request->folio_id;
-                $receiptDetails->to_folio_type  = $request->folio_type;
-                $receiptDetails->pay_type       = "credit";
+                $receiptDetails = new ReceiptDetails();
+                $receiptDetails->receipt_id = $receipt->id;
+                $receiptDetails->allocation = "Folio Receipt";
+                $receiptDetails->description = $request->description;
+                $receiptDetails->payment_type = $request->pay_type;
+                $receiptDetails->amount = $folio_receipt_amount;
+                $receiptDetails->taxAmount = $taxAmount;
+                $receiptDetails->folio_id = $request->folio_id;
+                $receiptDetails->folio_type = $request->folio_type;
+                $receiptDetails->account_id = $request->invoiceChart;
+                $receiptDetails->type = "Deposit";
+                $receiptDetails->to_folio_id = $request->folio_id;
+                $receiptDetails->to_folio_type = $request->folio_type;
+                $receiptDetails->pay_type = "credit";
                 if ($request->folio_type === 'Owner') {
-                    $receiptDetails->owner_folio_id       = $request->folio_id;
+                    $receiptDetails->owner_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Supplier') {
-                    $receiptDetails->supplier_folio_id       = $request->folio_id;
+                    $receiptDetails->supplier_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Tenant') {
-                    $receiptDetails->tenant_folio_id        = $request->folio_id;
+                    $receiptDetails->tenant_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Seller') {
-                    $receipt->seller_folio_id       = $request->folio_id;
+                    $receipt->seller_folio_id = $request->folio_id;
                 }
-                $receiptDetails->company_id     = auth('api')->user()->company_id;
+                $receiptDetails->company_id = auth('api')->user()->company_id;
                 $receiptDetails->save();
 
                 $triggerDocument = new DocumentGenerateController();
-                $triggerDocument->generateReceiptDocument($receipt->id, $request->pay_type, $request->money_from, $totalTaxAmount);
+                $fileDetails = $triggerDocument->generateReceiptDocument($receipt->id, $request->pay_type, $request->money_from, $totalTaxAmount);
 
                 $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
                 $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
@@ -185,12 +193,11 @@ class ReceiptController extends Controller
                 $storeLedgerDetails->folio_ledgers_id = $ledger->id;
                 $storeLedgerDetails->save();
 
-
                 if ($request->pay_type === 'eft') {
                     if ($request->folio_type === 'Owner') {
                         $folioData = OwnerFolio::where('id', $request->folio_id)->where('status', true)->first();
                         OwnerFolio::where('id', $request->folio_id)->where('status', true)->update([
-                            'money_in'  => $folioData->money_in + $folio_receipt_amount,
+                            'money_in' => $folioData->money_in + $folio_receipt_amount,
                             'total_balance' => $folioData->total_balance + $folio_receipt_amount,
                         ]);
                         // OWNER TRANSACTION STORE
@@ -227,12 +234,12 @@ class ReceiptController extends Controller
                             ]);
                     }
                 } else {
-                    $bankDepositList                    = new BankDepositList();
-                    $bankDepositList->receipt_id        = $receipt->id;
-                    $bankDepositList->receipt_date      = $request->invoiceDate;
-                    $bankDepositList->payment_method    = $request->pay_type;
-                    $bankDepositList->amount            = $folio_receipt_amount;
-                    $bankDepositList->company_id        = auth('api')->user()->company_id;
+                    $bankDepositList = new BankDepositList();
+                    $bankDepositList->receipt_id = $receipt->id;
+                    $bankDepositList->receipt_date = $request->invoiceDate;
+                    $bankDepositList->payment_method = $request->pay_type;
+                    $bankDepositList->amount = $folio_receipt_amount;
+                    $bankDepositList->company_id = auth('api')->user()->company_id;
                     $bankDepositList->save();
 
                     if ($request->folio_type === 'Owner') {
@@ -240,7 +247,7 @@ class ReceiptController extends Controller
                         OwnerFolio::where('id', $request->folio_id)
                             ->where('status', true)
                             ->update([
-                                'money_in'  => $folio->money_in + $folio_receipt_amount,
+                                'money_in' => $folio->money_in + $folio_receipt_amount,
                                 'total_balance' => $folio->total_balance + $folio_receipt_amount,
                                 'uncleared' => $folio->uncleared + $folio_receipt_amount
                             ]);
@@ -281,9 +288,23 @@ class ReceiptController extends Controller
                             ]);
                     }
                 }
+
+                $message_action_name = "Folio Receipt";
+                $messsage_trigger_point = 'Receipted';
+                $data = [
+                    'id' => $receipt->id,
+                    "property_id" => null,
+                    "status" => "Rent Receipted",
+                    "folio_type" => $request->folio_type,
+                    "folio_id" => $receipt->contact_id,
+                    "attached" => $fileDetails
+                ];
+                $activityMessageTrigger = new ActivityMessageTriggerController($message_action_name, '', $messsage_trigger_point, $data, "email");
+                $activityMessageTrigger->trigger();
             });
             return response()->json(['message' => 'Successfull'], 200);
         } catch (\Exception $ex) {
+            // Handle any exception that occurs during the transaction
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
@@ -299,114 +320,132 @@ class ReceiptController extends Controller
             DB::transaction(function () use ($request) {
                 $folio_receipt_amount = round($request->amount, 2);
                 $receipt = new Receipt();
-                $receipt->property_id    = $request->property_id;
-                $receipt->note           = $request->note;
-                $receipt->folio_id       = $request->folio_id;
-                $receipt->folio_type     = $request->folio_type;
+                $receipt->property_id = $request->property_id;
+                $receipt->note = $request->note;
+                $receipt->folio_id = $request->folio_id;
+                $receipt->folio_type = $request->folio_type;
                 if ($request->folio_type === 'Seller') {
-                    $receipt->seller_folio_id       = $request->folio_id;
+                    $receipt->seller_folio_id = $request->folio_id;
                 }
-                $receipt->contact_id     = $request->contact_id;
-                $receipt->amount         = $folio_receipt_amount;
-                $receipt->summary         = $request->description;
-                $receipt->receipt_date   = Date('Y-m-d');
+                $receipt->contact_id = $request->contact_id;
+                $receipt->amount = $folio_receipt_amount;
+                $receipt->summary = $request->description;
+                $receipt->receipt_date = Date('Y-m-d');
                 $receipt->payment_method = $request->pay_type;
-                $receipt->from           = $request->money_from;
-                $receipt->type           = "Receipt";
-                $receipt->new_type       = 'Receipt';
-                $receipt->created_by     = $request->created_by;
-                $receipt->updated_by     = $request->updated_by;
-                $receipt->from_folio_id  = $request->folio_id;
+                $receipt->from = $request->money_from;
+                $receipt->type = "Receipt";
+                $receipt->new_type = 'Receipt';
+                $receipt->created_by = $request->created_by;
+                $receipt->updated_by = $request->updated_by;
+                $receipt->from_folio_id = $request->folio_id;
                 $receipt->from_folio_type = $request->folio_type;
                 if ($request->pay_type === 'eft') {
-                    $receipt->status         = "Cleared";
-                    $receipt->cleared_date         = Date('Y-m-d');
+                    $receipt->status = "Cleared";
+                    $receipt->cleared_date = Date('Y-m-d');
                 } else {
-                    $receipt->status         = "Uncleared";
+                    $receipt->status = "Uncleared";
                 }
                 $receipt->company_id = auth('api')->user()->company_id;
                 if ($request->pay_type === 'cheque') {
-                    $receipt->cheque_drawer     = $request->chequeDetails['drawer'];
-                    $receipt->cheque_bank       = $request->chequeDetails['bank'];
-                    $receipt->cheque_branch     = $request->chequeDetails['branch'];
-                    $receipt->cheque_amount     = $folio_receipt_amount;
+                    $receipt->cheque_drawer = $request->chequeDetails['drawer'];
+                    $receipt->cheque_bank = $request->chequeDetails['bank'];
+                    $receipt->cheque_branch = $request->chequeDetails['branch'];
+                    $receipt->cheque_amount = $folio_receipt_amount;
                 }
                 $receipt->save();
 
-        $receiptDetails                 = new ReceiptDetails();
-        $receiptDetails->receipt_id     = $receipt->id;
-        $receiptDetails->allocation     = "Receipt";
-        $receiptDetails->description    = $request->description;
-        $receiptDetails->payment_type   = $request->pay_type;
-        $receiptDetails->amount         = $folio_receipt_amount;
-        $receiptDetails->folio_id       = $request->folio_id;
-        $receiptDetails->folio_type     = $request->folio_type;
-        $receiptDetails->account_id     = $request->invoiceChart;
-        $receiptDetails->type           = "Deposit";
-        $receiptDetails->to_folio_id    = $request->folio_id;
-        $receiptDetails->to_folio_type  = $request->folio_type;
-        $receiptDetails->pay_type       = "credit";
-        if ($request->folio_type === 'Owner') {
-            $receiptDetails->owner_folio_id       = $request->folio_id;
-        } elseif ($request->folio_type === 'Supplier') {
-            $receiptDetails->supplier_folio_id       = $request->folio_id;
-        } elseif ($request->folio_type === 'Tenant') {
-            $receiptDetails->tenant_folio_id        = $request->folio_id;
-        } elseif ($request->folio_type === 'Seller') {
-            $receiptDetails->seller_folio_id       = $request->folio_id;
-        }
-        $receiptDetails->company_id     = auth('api')->user()->company_id;
-        $receiptDetails->save();
+                $receiptDetails = new ReceiptDetails();
+                $receiptDetails->receipt_id = $receipt->id;
+                $receiptDetails->allocation = "Receipt";
+                $receiptDetails->description = $request->description;
+                $receiptDetails->payment_type = $request->pay_type;
+                $receiptDetails->amount = $folio_receipt_amount;
+                $receiptDetails->folio_id = $request->folio_id;
+                $receiptDetails->folio_type = $request->folio_type;
+                $receiptDetails->account_id = $request->invoiceChart;
+                $receiptDetails->type = "Deposit";
+                $receiptDetails->to_folio_id = $request->folio_id;
+                $receiptDetails->to_folio_type = $request->folio_type;
+                $receiptDetails->pay_type = "credit";
+                if ($request->folio_type === 'Owner') {
+                    $receiptDetails->owner_folio_id = $request->folio_id;
+                } elseif ($request->folio_type === 'Supplier') {
+                    $receiptDetails->supplier_folio_id = $request->folio_id;
+                } elseif ($request->folio_type === 'Tenant') {
+                    $receiptDetails->tenant_folio_id = $request->folio_id;
+                } elseif ($request->folio_type === 'Seller') {
+                    $receiptDetails->seller_folio_id = $request->folio_id;
+                }
+                $receiptDetails->company_id = auth('api')->user()->company_id;
+                $receiptDetails->save();
 
-        $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
-        $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
-        $ledger->updated = 1;
-        $ledger->save();
-        $storeLedgerDetails = new FolioLedgerDetailsDaily();
-        $storeLedgerDetails->company_id = auth('api')->user()->company_id;
-        $storeLedgerDetails->ledger_type = $receipt->new_type;
-        $storeLedgerDetails->details = "Folio Receipt";
-        $storeLedgerDetails->folio_id = $request->folio_id;
-        $storeLedgerDetails->folio_type = $request->folio_type;
-        $storeLedgerDetails->amount = $folio_receipt_amount;
-        $storeLedgerDetails->type = "credit";
-        $storeLedgerDetails->date = date('Y-m-d');
-        $storeLedgerDetails->receipt_id = $receipt->id;
-        $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
-        $storeLedgerDetails->payment_type = $receipt->payment_method;
-        $storeLedgerDetails->folio_ledgers_id = $ledger->id;
-        $storeLedgerDetails->save();
+                $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
+                $ledger->updated = 1;
+                $ledger->save();
+                $storeLedgerDetails = new FolioLedgerDetailsDaily();
+                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
+                $storeLedgerDetails->ledger_type = $receipt->new_type;
+                $storeLedgerDetails->details = "Folio Receipt";
+                $storeLedgerDetails->folio_id = $request->folio_id;
+                $storeLedgerDetails->folio_type = $request->folio_type;
+                $storeLedgerDetails->amount = $folio_receipt_amount;
+                $storeLedgerDetails->type = "credit";
+                $storeLedgerDetails->date = date('Y-m-d');
+                $storeLedgerDetails->receipt_id = $receipt->id;
+                $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
+                $storeLedgerDetails->payment_type = $receipt->payment_method;
+                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
+                $storeLedgerDetails->save();
+                $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
+                $ledger->updated = 1;
+                $ledger->save();
+                $storeLedgerDetails = new FolioLedgerDetailsDaily();
+                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
+                $storeLedgerDetails->ledger_type = $receipt->new_type;
+                $storeLedgerDetails->details = "Folio Receipt";
+                $storeLedgerDetails->folio_id = $request->folio_id;
+                $storeLedgerDetails->folio_type = $request->folio_type;
+                $storeLedgerDetails->amount = $folio_receipt_amount;
+                $storeLedgerDetails->type = "credit";
+                $storeLedgerDetails->date = date('Y-m-d');
+                $storeLedgerDetails->receipt_id = $receipt->id;
+                $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
+                $storeLedgerDetails->payment_type = $receipt->payment_method;
+                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
+                $storeLedgerDetails->save();
 
 
-        if ($request->pay_type === 'eft') {
-            if ($request->folio_type === 'Seller') {
-                $folio = SellerFolio::where('id', $request->folio_id)->first();
-                SellerFolio::where('id', $request->folio_id)
-                    ->update([
-                        'money_in' => $folio->money_in + $folio_receipt_amount,
-                        'balance' => $folio->balance + $folio_receipt_amount,
-                    ]);
-            }
-        } else {
-            $bankDepositList                    = new BankDepositList();
-            $bankDepositList->receipt_id        = $receipt->id;
-            $bankDepositList->receipt_date      = Carbon::createFromFormat('d m Y', $request->date)->format('Y-m-d',);
-            $bankDepositList->payment_method    = $request->pay_type;
-            $bankDepositList->amount            = $folio_receipt_amount;
-            $bankDepositList->company_id        = auth('api')->user()->company_id;
-            $bankDepositList->save();
+                if ($request->pay_type === 'eft') {
+                    if ($request->folio_type === 'Seller') {
+                        $folio = SellerFolio::where('id', $request->folio_id)->first();
+                        SellerFolio::where('id', $request->folio_id)
+                            ->update([
+                                'money_in' => $folio->money_in + $folio_receipt_amount,
+                                'balance' => $folio->balance + $folio_receipt_amount,
+                            ]);
+                    }
+                } else {
+                    $bankDepositList = new BankDepositList();
+                    $bankDepositList->receipt_id = $receipt->id;
+                    $bankDepositList->receipt_date = Carbon::createFromFormat('d m Y', $request->date)->format('Y-m-d',);
+                    $bankDepositList->payment_method = $request->pay_type;
+                    $bankDepositList->amount = $folio_receipt_amount;
+                    $bankDepositList->company_id = auth('api')->user()->company_id;
+                    $bankDepositList->save();
 
-            if ($request->folio_type === 'Seller') {
-                $folio = SellerFolio::where('id', $request->folio_id)->first();
-                SellerFolio::where('id', $request->folio_id)
-                    ->update([
-                        'money_in' => $folio->money_in + $folio_receipt_amount,
-                        'balance' => $folio->balance + $folio_receipt_amount,
-                    ]);
-            }
-        }
-        });
-        return response()->json(['message' => 'Successfull'], 200);
+                    if ($request->folio_type === 'Seller') {
+                        $folio = SellerFolio::where('id', $request->folio_id)->first();
+                        SellerFolio::where('id', $request->folio_id)
+                            ->update([
+                                'money_in' => $folio->money_in + $folio_receipt_amount,
+                                'balance' => $folio->balance + $folio_receipt_amount,
+                            ]);
+                    }
+                }
+            });
+            return response()->json(['message' => 'Successfull'], 200);
         } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
@@ -415,6 +454,9 @@ class ReceiptController extends Controller
     /**
      * THIS FUNCTION IS USED TO STORE THE FOLIO WITHDRAW RECEIPT
      * FOLIO CAN BE WITHDRAWN FROM OWNER, TENANT OR SUPPLIER
+     * CALCULATE TAX IF APPLICABLE
+     * Record ledger details in the daily ledger
+     * Store owner withdraw transaction
      */
     public function folio_withdraw_store(Request $request)
     {
@@ -427,58 +469,58 @@ class ReceiptController extends Controller
                 }
                 $folio_withdraw_amount = round($request->amount, 2);
                 $receipt = new Receipt();
-                $receipt->property_id    = $request->property_id;
-                $receipt->note           = $request->note;
-                $receipt->folio_id       = $request->folio_id;
-                $receipt->folio_type     = $request->folio_type;
+                $receipt->property_id = $request->property_id;
+                $receipt->note = $request->note;
+                $receipt->folio_id = $request->folio_id;
+                $receipt->folio_type = $request->folio_type;
                 if ($request->folio_type === 'Owner') {
-                    $receipt->owner_folio_id       = $request->folio_id;
+                    $receipt->owner_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Supplier') {
-                    $receipt->supplier_folio_id       = $request->folio_id;
+                    $receipt->supplier_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Tenant') {
-                    $receipt->tenant_folio_id        = $request->folio_id;
+                    $receipt->tenant_folio_id = $request->folio_id;
                 }
-                $receipt->contact_id     = $request->contact_id;
-                $receipt->amount         = $folio_withdraw_amount;
-                $receipt->summary         = "Withdrawal to " . $request->payee;
-                $receipt->receipt_date   = $request->withdrawDate;
-                $receipt->type           = "Folio Withdraw";
-                $receipt->new_type       = 'Withdrawal';
-                $receipt->status         = "Cleared";
-                $receipt->cleared_date         = date("Y-m-d");
+                $receipt->contact_id = $request->contact_id;
+                $receipt->amount = $folio_withdraw_amount;
+                $receipt->summary = "Withdrawal to " . $request->payee;
+                $receipt->receipt_date = $request->withdrawDate;
+                $receipt->type = "Folio Withdraw";
+                $receipt->new_type = 'Withdrawal';
+                $receipt->status = "Cleared";
+                $receipt->cleared_date = date("Y-m-d");
                 $receipt->payment_method = $request->pay_type;
-                $receipt->created_by     = $request->created_by;
-                $receipt->updated_by     = $request->updated_by;
-                $receipt->company_id     = auth('api')->user()->company_id;
-                $receipt->from_folio_id    = $request->folio_id;
-                $receipt->from_folio_type  = $request->folio_type;
-                $receipt->totalTaxAmount  = $taxAmount;
-                $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                $receipt->created_by = $request->created_by;
+                $receipt->updated_by = $request->updated_by;
+                $receipt->company_id = auth('api')->user()->company_id;
+                $receipt->from_folio_id = $request->folio_id;
+                $receipt->from_folio_type = $request->folio_type;
+                $receipt->totalTaxAmount = $taxAmount;
+                $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
                 $receipt->save();
 
-                $receiptDetails                   = new ReceiptDetails();
-                $receiptDetails->receipt_id       = $receipt->id;
-                $receiptDetails->allocation       = 'Folio Withdraw';
-                $receiptDetails->description      = "Withdrawal to " . $request->payee;
-                $receiptDetails->payment_type     = $request->pay_type;
-                $receiptDetails->amount           = $folio_withdraw_amount;
-                $receiptDetails->folio_id         = $request->folio_id;
-                $receiptDetails->folio_type       = $request->folio_type;
-                $receiptDetails->account_id       = $request->invoiceChart;
-                $receiptDetails->tax              = $request->includeTax;
-                $receiptDetails->type             = "Withdraw";
-                $receiptDetails->from_folio_id    = $request->folio_id;
-                $receiptDetails->from_folio_type  = $request->folio_type;
-                $receiptDetails->taxAmount        = $taxAmount;
-                $receiptDetails->pay_type       = "debit";
+                $receiptDetails = new ReceiptDetails();
+                $receiptDetails->receipt_id = $receipt->id;
+                $receiptDetails->allocation = 'Folio Withdraw';
+                $receiptDetails->description = "Withdrawal to " . $request->payee;
+                $receiptDetails->payment_type = $request->pay_type;
+                $receiptDetails->amount = $folio_withdraw_amount;
+                $receiptDetails->folio_id = $request->folio_id;
+                $receiptDetails->folio_type = $request->folio_type;
+                $receiptDetails->account_id = $request->invoiceChart;
+                $receiptDetails->tax = $request->includeTax;
+                $receiptDetails->type = "Withdraw";
+                $receiptDetails->from_folio_id = $request->folio_id;
+                $receiptDetails->from_folio_type = $request->folio_type;
+                $receiptDetails->taxAmount = $taxAmount;
+                $receiptDetails->pay_type = "debit";
                 if ($request->folio_type === 'Owner') {
-                    $receiptDetails->owner_folio_id       = $request->folio_id;
+                    $receiptDetails->owner_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Supplier') {
-                    $receiptDetails->supplier_folio_id       = $request->folio_id;
+                    $receiptDetails->supplier_folio_id = $request->folio_id;
                 } elseif ($request->folio_type === 'Tenant') {
-                    $receiptDetails->tenant_folio_id        = $request->folio_id;
+                    $receiptDetails->tenant_folio_id = $request->folio_id;
                 }
-                $receiptDetails->company_id       = auth('api')->user()->company_id;
+                $receiptDetails->company_id = auth('api')->user()->company_id;
                 $receiptDetails->save();
 
                 $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
@@ -550,7 +592,13 @@ class ReceiptController extends Controller
         }
     }
 
-    // JOURNAL
+    /**
+     * THIS FUNCTION IS USED TO TRANSFER FOLIO BALANCE
+     * FOLIO CAN BE TRANSFERRED FROM OWNER, TENANT, SELLER OR SUPPLIER
+     * CALCULATE TAX IF APPLICABLE
+     * Record ledger details in the daily ledger
+     * Store owner Transferred transaction
+     */
     public function journal(Request $request)
     {
         try {
@@ -562,93 +610,93 @@ class ReceiptController extends Controller
                     $taxAmount = $includeTax->taxCalculation($journal_amount);
                 }
                 $from_receipt = new Receipt();
-                $from_receipt->property_id    = $request->from_property_id;
-                $from_receipt->contact_id     = $request->from_contact_id;
-                $from_receipt->folio_id       = $request->from_folio_id;
-                $from_receipt->folio_type     = $request->from_folio_type;
+                $from_receipt->property_id = $request->from_property_id;
+                $from_receipt->contact_id = $request->from_contact_id;
+                $from_receipt->folio_id = $request->from_folio_id;
+                $from_receipt->folio_type = $request->from_folio_type;
                 if ($request->folio_type === 'Owner') {
-                    $from_receipt->owner_folio_id       = $request->from_folio_id;
+                    $from_receipt->owner_folio_id = $request->from_folio_id;
                 } elseif ($request->folio_type === 'Supplier') {
-                    $from_receipt->supplier_folio_id       = $request->from_folio_id;
+                    $from_receipt->supplier_folio_id = $request->from_folio_id;
                 } elseif ($request->folio_type === 'Tenant') {
-                    $from_receipt->tenant_folio_id        = $request->from_folio_id;
+                    $from_receipt->tenant_folio_id = $request->from_folio_id;
                 } elseif ($request->folio_type === 'Seller') {
-                    $from_receipt->seller_folio_id        = $request->from_folio_id;
+                    $from_receipt->seller_folio_id = $request->from_folio_id;
                 }
-                $from_receipt->amount         = $journal_amount;
-                $from_receipt->summary         = $request->details;
-                $from_receipt->receipt_date   = date("Y-m-d");
-                $from_receipt->type           = "Journal";
-                $from_receipt->new_type       = 'Journal';
-                $from_receipt->status         = "Cleared";
-                $from_receipt->cleared_date         = date("Y-m-d");
+                $from_receipt->amount = $journal_amount;
+                $from_receipt->summary = $request->details;
+                $from_receipt->receipt_date = date("Y-m-d");
+                $from_receipt->type = "Journal";
+                $from_receipt->new_type = 'Journal';
+                $from_receipt->status = "Cleared";
+                $from_receipt->cleared_date = date("Y-m-d");
                 $from_receipt->payment_method = $request->pay_type;
-                $from_receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                $from_receipt->updated_by     = $request->updated_by;
-                $from_receipt->company_id     = auth('api')->user()->company_id;
-                $from_receipt->from_folio_id     = $request->from_folio_id;
-                $from_receipt->from_folio_type     = $request->from_folio_type;
-                $from_receipt->to_folio_id     = $request->to_folio_id;
-                $from_receipt->to_folio_type     = $request->to_folio_type;
-                $from_receipt->totalTaxAmount     = $taxAmount;
+                $from_receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                $from_receipt->updated_by = $request->updated_by;
+                $from_receipt->company_id = auth('api')->user()->company_id;
+                $from_receipt->from_folio_id = $request->from_folio_id;
+                $from_receipt->from_folio_type = $request->from_folio_type;
+                $from_receipt->to_folio_id = $request->to_folio_id;
+                $from_receipt->to_folio_type = $request->to_folio_type;
+                $from_receipt->totalTaxAmount = $taxAmount;
                 $from_receipt->save();
 
-                $from_receiptDetails                    = new ReceiptDetails();
-                $from_receiptDetails->receipt_id        = $from_receipt->id;
-                $from_receiptDetails->allocation        = 'Journal';
-                $from_receiptDetails->description       = $request->details;
-                $from_receiptDetails->payment_type      = $request->pay_type;;
-                $from_receiptDetails->amount            = $journal_amount;
-                $from_receiptDetails->folio_id          = $request->from_folio_id;
-                $from_receiptDetails->folio_type        = $request->from_folio_type;
-                $from_receiptDetails->account_id        = $request->invoiceChart;
-                $from_receiptDetails->tax               = $request->includeTax;
-                $from_receiptDetails->from_folio_id     = $request->from_folio_id;
-                $from_receiptDetails->from_folio_type   = $request->from_folio_type;
-                $from_receiptDetails->to_folio_id       = $request->to_folio_id;
-                $from_receiptDetails->to_folio_type     = $request->to_folio_type;
-                $from_receiptDetails->taxAmount         = $taxAmount;
-                $from_receiptDetails->type              = "Withdraw";
-                $from_receiptDetails->pay_type       = "debit";
+                $from_receiptDetails = new ReceiptDetails();
+                $from_receiptDetails->receipt_id = $from_receipt->id;
+                $from_receiptDetails->allocation = 'Journal';
+                $from_receiptDetails->description = $request->details;
+                $from_receiptDetails->payment_type = $request->pay_type;;
+                $from_receiptDetails->amount = $journal_amount;
+                $from_receiptDetails->folio_id = $request->from_folio_id;
+                $from_receiptDetails->folio_type = $request->from_folio_type;
+                $from_receiptDetails->account_id = $request->invoiceChart;
+                $from_receiptDetails->tax = $request->includeTax;
+                $from_receiptDetails->from_folio_id = $request->from_folio_id;
+                $from_receiptDetails->from_folio_type = $request->from_folio_type;
+                $from_receiptDetails->to_folio_id = $request->to_folio_id;
+                $from_receiptDetails->to_folio_type = $request->to_folio_type;
+                $from_receiptDetails->taxAmount = $taxAmount;
+                $from_receiptDetails->type = "Withdraw";
+                $from_receiptDetails->pay_type = "debit";
                 if ($request->from_folio_type === 'Owner') {
-                    $from_receiptDetails->owner_folio_id       = $request->from_folio_id;
+                    $from_receiptDetails->owner_folio_id = $request->from_folio_id;
                 } elseif ($request->from_folio_type === 'Supplier') {
-                    $from_receiptDetails->supplier_folio_id       = $request->from_folio_id;
+                    $from_receiptDetails->supplier_folio_id = $request->from_folio_id;
                 } elseif ($request->from_folio_type === 'Tenant') {
-                    $from_receiptDetails->tenant_folio_id        = $request->from_folio_id;
+                    $from_receiptDetails->tenant_folio_id = $request->from_folio_id;
                 } elseif ($request->from_folio_type === 'Seller') {
-                    $from_receiptDetails->seller_folio_id        = $request->from_folio_id;
+                    $from_receiptDetails->seller_folio_id = $request->from_folio_id;
                 }
-                $from_receiptDetails->company_id        = auth('api')->user()->company_id;
+                $from_receiptDetails->company_id = auth('api')->user()->company_id;
                 $from_receiptDetails->save();
 
-                $to_receiptDetails                    = new ReceiptDetails();
-                $to_receiptDetails->receipt_id        = $from_receipt->id;
-                $to_receiptDetails->allocation        = 'Journal';
-                $to_receiptDetails->description       = $request->details;
-                $to_receiptDetails->payment_type      = $request->pay_type;
-                $to_receiptDetails->amount            = $journal_amount;
-                $to_receiptDetails->folio_id          = $request->to_folio_id;
-                $to_receiptDetails->folio_type        = $request->to_folio_type;
-                $to_receiptDetails->account_id        = $request->invoiceChart;
-                $to_receiptDetails->tax               = $request->includeTax;
-                $to_receiptDetails->type              = "Deposit";
-                $to_receiptDetails->from_folio_id     = $request->from_folio_id;
-                $to_receiptDetails->from_folio_type   = $request->from_folio_type;
-                $to_receiptDetails->to_folio_id       = $request->to_folio_id;
-                $to_receiptDetails->to_folio_type     = $request->to_folio_type;
-                $to_receiptDetails->taxAmount         = $taxAmount;
-                $to_receiptDetails->pay_type       = "credit";
+                $to_receiptDetails = new ReceiptDetails();
+                $to_receiptDetails->receipt_id = $from_receipt->id;
+                $to_receiptDetails->allocation = 'Journal';
+                $to_receiptDetails->description = $request->details;
+                $to_receiptDetails->payment_type = $request->pay_type;
+                $to_receiptDetails->amount = $journal_amount;
+                $to_receiptDetails->folio_id = $request->to_folio_id;
+                $to_receiptDetails->folio_type = $request->to_folio_type;
+                $to_receiptDetails->account_id = $request->invoiceChart;
+                $to_receiptDetails->tax = $request->includeTax;
+                $to_receiptDetails->type = "Deposit";
+                $to_receiptDetails->from_folio_id = $request->from_folio_id;
+                $to_receiptDetails->from_folio_type = $request->from_folio_type;
+                $to_receiptDetails->to_folio_id = $request->to_folio_id;
+                $to_receiptDetails->to_folio_type = $request->to_folio_type;
+                $to_receiptDetails->taxAmount = $taxAmount;
+                $to_receiptDetails->pay_type = "credit";
                 if ($request->to_folio_type === 'Owner') {
-                    $to_receiptDetails->owner_folio_id       = $request->to_folio_id;
+                    $to_receiptDetails->owner_folio_id = $request->to_folio_id;
                 } elseif ($request->to_folio_type === 'Supplier') {
-                    $to_receiptDetails->supplier_folio_id       = $request->to_folio_id;
+                    $to_receiptDetails->supplier_folio_id = $request->to_folio_id;
                 } elseif ($request->to_folio_type === 'Tenant') {
-                    $to_receiptDetails->tenant_folio_id        = $request->to_folio_id;
+                    $to_receiptDetails->tenant_folio_id = $request->to_folio_id;
                 } elseif ($request->to_folio_type === 'Seller') {
-                    $to_receiptDetails->seller_folio_id        = $request->to_folio_id;
+                    $to_receiptDetails->seller_folio_id = $request->to_folio_id;
                 }
-                $to_receiptDetails->company_id        = auth('api')->user()->company_id;
+                $to_receiptDetails->company_id = auth('api')->user()->company_id;
                 $to_receiptDetails->save();
 
                 $ledger = FolioLedger::where('folio_id', $request->from_folio_id)->where('folio_type', $request->from_folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
@@ -848,7 +896,7 @@ class ReceiptController extends Controller
             if ($type === '1') {
                 $folios = OwnerContact::where('company_id', auth('api')->user()->company_id)->where('status', true)->select('id', 'contact_id', 'reference', 'property_id')->with('property:id,reference', 'ownerFolio:id,owner_contact_id')->get();
             } elseif ($type === '2') {
-                $folios = SupplierContact::where('company_id', auth('api')->user()->company_id)->select('id', 'contact_id', 'reference')->with('supplierDetails:id,supplier_contact_id,folio_code')->get();
+                $folios = SupplierContact::where('status', true)->where('company_id', auth('api')->user()->company_id)->select('id', 'contact_id', 'reference')->with('supplierDetails:id,supplier_contact_id,folio_code')->get();
             } elseif ($type === '3') {
                 $folios = TenantContact::where('company_id', auth('api')->user()->company_id)->select('id', 'contact_id', 'reference', 'property_id')->with('property:id,reference', 'tenantFolio:id,tenant_contact_id')->get();
             }
@@ -857,6 +905,11 @@ class ReceiptController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function is used to get Owner Folios, Tenant Folios, Supplier Folios or Seller Folios Based on Type
+     * Also Search Specific Owner Folios, Tenant Folios, Supplier Folios or Seller Folios
+     */
     public function receipt_folios_ssr(Request $request, $type)
     {
         try {
@@ -931,6 +984,9 @@ class ReceiptController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+    /**
+     * THIS FUNCTION IS USED TO GET OWNER, TENANT, SUPPLIER OR SELLER FOLIO BALANCE
+     */
     public function receipt_folio_balance($type, $id)
     {
         try {
@@ -970,6 +1026,17 @@ class ReceiptController extends Controller
         }
     }
 
+    /**
+     * This function imports a bank file, processes its content, and returns the parsed data.
+     *
+     * The function performs the following steps:
+     * 1. Checks if a file with the same name has already been uploaded for the current user's company.
+     * 2. If a file is provided, reads its content and processes each line to extract relevant transaction information.
+     * 4. Constructs an array of transaction data and returns it in the response.
+     *
+     * @param Request $request The HTTP request object containing the uploaded file.
+     * @return \Illuminate\Http\JsonResponse The response containing the parsed transaction data or an error message.
+     */
     public function importBankFile(Request $request)
     {
         try {
@@ -1087,6 +1154,16 @@ class ReceiptController extends Controller
     //     $tenantFolio = TenantFolio::with('uploadBankfiles')->whereIn('bank_reterence', $ref_data)->get();
     //     return response()->json(["data" => $tenantFolio, "status" => "success"]);
     // }
+
+    /**
+     * This function retrieves bank import reconciliation data for the current user's company.
+     *
+     * The function performs the following steps:
+     * 1. Queries the `UploadBankFile` model to get all records
+     * 2. Includes related tenant folio and tenant contact data using Eloquent relationships.
+     * 3. Returns the retrieved data in the response.
+     * @return \Illuminate\Http\JsonResponse The response containing the bank import reconciliation data or an error message.
+     */
     public function getBankImportReconciliation()
     {
         try {
@@ -1104,19 +1181,19 @@ class ReceiptController extends Controller
             $bankfileID = [];
             foreach ($data as $key => $value) {
                 $bankFile = new UploadBankFile();
-                $date        = Carbon::createFromFormat('m-d-Y', $value['date'])->format('Y-m-d');
+                $date = Carbon::createFromFormat('m-d-Y', $value['date'])->format('Y-m-d');
                 $bankFile->date = $date;
-                $bankFile->type         = $value['type'];
+                $bankFile->type = $value['type'];
                 $bankFile->file_name = $value['file'];
-                $bankFile->description  = $value['description'];
+                $bankFile->description = $value['description'];
                 if ($bankFile->type == 'CR') {
-                    $bankFile->credit       = round($value['amount'], 2);
+                    $bankFile->credit = round($value['amount'], 2);
                 } else {
-                    $bankFile->debit        = round($value['amount'], 2);
+                    $bankFile->debit = round($value['amount'], 2);
                 }
 
-                $bankFile->status       = 0;
-                $bankFile->company_id       = auth('api')->user()->company_id;
+                $bankFile->status = 0;
+                $bankFile->company_id = auth('api')->user()->company_id;
                 $bankFile->save();
                 array_push($bankfileID, $bankFile->id);
             }
@@ -1128,6 +1205,15 @@ class ReceiptController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function deletes a bank file record based on the provided ID and the company ID of the authenticated user.
+     * It returns a success response with the result of the deletion operation.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param  int  $id - The ID of the bank file record to be deleted.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the deletion result or an error response with exception details.
+     */
     public function importBankFileDelete($id)
     {
         try {
@@ -1137,6 +1223,23 @@ class ReceiptController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function processes a receipt as rent for a tenant and updates various folio and ledger records.
+     *
+     * The function performs the following steps:
+     * 3. Creates a new receipt record with tenant and property details.
+     * 4. Updates the status of the associated bank data.
+     * 5. Calculates and applies tax if applicable.
+     * 6. Creates receipt details and updates owner folio and ledger records.
+     * 7. Updates rent management records.
+     * 8. Stores the transaction in the owner folio transaction table.
+     * 9. Generates a receipt document.
+     * 10. Commits the transaction if all operations are successful, or rolls back if an error occurs.
+     *
+     * @param Request $request The HTTP request object containing receipt and tenant details.
+     * @return \Illuminate\Http\JsonResponse The response containing the receipt ID, a success message, or an error message.
+     */
     public function receiptAsRent(Request $request)
     {
         try {
@@ -1171,40 +1274,40 @@ class ReceiptController extends Controller
                     return response()->json(array('errors' => $validator->getMessageBag()->toArray()), 422);
                 } else {
                     $receipt = new Receipt();
-                    $receipt->property_id    = $folio->property_id;
-                    $receipt->contact_id     = $folio->id;
-                    $receipt->amount         = $request->amount;
-                    $receipt->receipt_date   = date('Y-m-d');
-                    $receipt->rent_amount    = $request->amount;
-                    $receipt->create_date    = date('Y-m-d');
-                    $receipt->type           = "Tenant Receipt";
-                    $receipt->new_type       = 'Receipt';
+                    $receipt->property_id = $folio->property_id;
+                    $receipt->contact_id = $folio->id;
+                    $receipt->amount = $request->amount;
+                    $receipt->receipt_date = date('Y-m-d');
+                    $receipt->rent_amount = $request->amount;
+                    $receipt->create_date = date('Y-m-d');
+                    $receipt->type = "Tenant Receipt";
+                    $receipt->new_type = 'Receipt';
                     $receipt->payment_method = "eft";
-                    $receipt->amount_type    = "eft";
-                    $receipt->paid_by        = "eft";
-                    $receipt->ref            = $request->bank_reference;
-                    $receipt->folio_id       = $folio->tenantFolio->id;
-                    $receipt->folio_type     = "Tenant";
+                    $receipt->amount_type = "eft";
+                    $receipt->paid_by = "eft";
+                    $receipt->ref = $request->bank_reference;
+                    $receipt->folio_id = $folio->tenantFolio->id;
+                    $receipt->folio_type = "Tenant";
                     if ($request->folio_type === 'Owner') {
-                        $receipt->owner_folio_id       = $folio->tenantFolio->id;
+                        $receipt->owner_folio_id = $folio->tenantFolio->id;
                     } elseif ($request->folio_type === 'Supplier') {
-                        $receipt->supplier_folio_id       = $folio->tenantFolio->id;
+                        $receipt->supplier_folio_id = $folio->tenantFolio->id;
                     } elseif ($request->folio_type === 'Tenant') {
-                        $receipt->tenant_folio_id        = $folio->tenantFolio->id;
+                        $receipt->tenant_folio_id = $folio->tenantFolio->id;
                     }
                     // ------- MIRAZ(START) ------- //
-                    $receipt->from_folio_id  = $folio->tenantFolio->id;
+                    $receipt->from_folio_id = $folio->tenantFolio->id;
                     $receipt->from_folio_type = "Tenant";
-                    $receipt->to_folio_id    = $ownerFolioId;
-                    $receipt->to_folio_type  = "Owner";
+                    $receipt->to_folio_id = $ownerFolioId;
+                    $receipt->to_folio_type = "Owner";
                     // ------- MIRAZ(END) ------- //
 
-                    $receipt->company_id     = auth('api')->user()->company_id;
+                    $receipt->company_id = auth('api')->user()->company_id;
 
-                    $receipt->status         = "Cleared";
-                    $receipt->cleared_date   = date('Y-m-d');
-                    $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                    $receipt->updated_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                    $receipt->status = "Cleared";
+                    $receipt->cleared_date = date('Y-m-d');
+                    $receipt->created_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                    $receipt->updated_by = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
 
                     $receipt->save();
                     $receipt__id = $receipt->id;
@@ -1226,23 +1329,23 @@ class ReceiptController extends Controller
                         }
                         $totalTaxAmount += $taxAmount;
 
-                        $receiptDetails               = new ReceiptDetails();
-                        $receiptDetails->receipt_id   = $receipt->id;
-                        $receiptDetails->allocation   = "Rent";
-                        $receiptDetails->account_id   = !empty($coa) ? $coa->id : NULL;
-                        $receiptDetails->description  = "";
-                        $receiptDetails->folio_id     = $ownerFolioId;
-                        $receiptDetails->folio_type   = "Owner";
-                        $receiptDetails->amount       = $request->amount;
+                        $receiptDetails = new ReceiptDetails();
+                        $receiptDetails->receipt_id = $receipt->id;
+                        $receiptDetails->allocation = "Rent";
+                        $receiptDetails->account_id = !empty($coa) ? $coa->id : NULL;
+                        $receiptDetails->description = "";
+                        $receiptDetails->folio_id = $ownerFolioId;
+                        $receiptDetails->folio_type = "Owner";
+                        $receiptDetails->amount = $request->amount;
                         $receiptDetails->payment_type = "eft";
-                        $receiptDetails->from_folio_id       = $folio->tenantFolio->id;
-                        $receiptDetails->from_folio_type     = "Tenant";
-                        $receiptDetails->to_folio_id       = $ownerFolioId;
-                        $receiptDetails->to_folio_type       = "Owner";
-                        $receiptDetails->pay_type       = "credit";
-                        $receiptDetails->taxAmount       = $taxAmount;
-                        $receiptDetails->owner_folio_id       = $ownerFolioId;
-                        $receiptDetails->company_id     = auth('api')->user()->company_id;
+                        $receiptDetails->from_folio_id = $folio->tenantFolio->id;
+                        $receiptDetails->from_folio_type = "Tenant";
+                        $receiptDetails->to_folio_id = $ownerFolioId;
+                        $receiptDetails->to_folio_type = "Owner";
+                        $receiptDetails->pay_type = "credit";
+                        $receiptDetails->taxAmount = $taxAmount;
+                        $receiptDetails->owner_folio_id = $ownerFolioId;
+                        $receiptDetails->company_id = auth('api')->user()->company_id;
                         $receiptDetails->save();
 
                         OwnerFolio::where('id', $ownerFolioId)->where('status', true)->update([
@@ -1279,7 +1382,7 @@ class ReceiptController extends Controller
                     $paidTo = $tenantAccountFolio->paid_to;
                     $rentType = strtolower($tenantAccountFolio->rent_type);
 
-                    $amount = (int)$request->amount;
+                    $amount = (int) $request->amount;
 
                     $amountWithPartPaid = $amount + $part_paid;
 
@@ -1313,7 +1416,7 @@ class ReceiptController extends Controller
                 return response()->json([
                     'receipt_id' => $receipt__id,
                     'message' => 'Receipt saved successfully',
-                    'Status'  => 'Success'
+                    'Status' => 'Success'
                 ], 200);
             });
             return $db;
@@ -1324,7 +1427,6 @@ class ReceiptController extends Controller
 
     public function owner_money_in_out($id)
     {
-
         try {
             $money_in_receipt = Receipt::select('id')->where('property_id', $id)->get();
             $money_in = ReceiptDetails::select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"), DB::raw("sum(amount) as value"))

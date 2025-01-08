@@ -36,8 +36,16 @@ use stdClass;
 class BillsController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     * @return Renderable
+     * This function retrieves a list of unpaid and approved bills for the currently authenticated user's company.
+     * 
+     * The function performs the following operations:
+     * Fetches bills that are unpaid, approved, with a billing date on or before the current date.
+     * Counts the number of unpaid bills that have been uploaded for the currently authenticated user's company.
+     * Counts the number of unpaid bills that are not uploaded and not approved for the currently authenticated user's company.
+     * Returns the list of bills, the count of uploaded bills, and the count of approval bills along with a success message in a JSON response with a 200 status code.
+     * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @return \Illuminate\Http\JsonResponse The response containing the list of bills, counts of uploaded and approval bills, or an error message.
      */
     public function index()
     {
@@ -51,6 +59,15 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function retrieves a list of properties for billing purposes.
+     * 
+     * The function performs the following operations:
+     * Returns the list of properties along with a success message in a JSON response.
+     * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @return \Illuminate\Http\JsonResponse The response containing the list of properties or an error message.
+     */
     public function billPropertyList()
     {
         try {
@@ -66,6 +83,16 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function retrieves a list of future unpaid and approved bills for the currently authenticated user's company.
+     * 
+     * The function performs the following operations:
+     * Fetches bills that are unpaid, approved, with a billing date after the current date.
+     * Returns the list of future unpaid bills along with a success message in a JSON response with a 200 status code.
+     * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @return \Illuminate\Http\JsonResponse The response containing the list of future unpaid bills or an error message.
+     */
     public function futurePayBillList()
     {
         try {
@@ -75,6 +102,17 @@ class BillsController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function retrieves a list of paid and approved bills for the currently authenticated user's company.
+     * 
+     * The function performs the following operations:
+     * Fetches bills that are paid.
+     * Returns the list of paid bills along with a success message in a JSON response with a 200 status code.
+     * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @return \Illuminate\Http\JsonResponse The response containing the list of paid bills or an error message.
+     */
     public function paidBillList()
     {
         try {
@@ -84,6 +122,17 @@ class BillsController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function retrieves a list of uploaded bills for the currently authenticated user's company.
+     * 
+     * The function performs the following operations:
+     * Fetches bills that are marked as uploaded and belong to the currently authenticated user's company.
+     * Returns the list of uploaded bills along with a success message in a JSON response with a 200 status code.
+     * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @return \Illuminate\Http\JsonResponse The response containing the list of uploaded bills or an error message.
+     */
     public function uploadedBillList()
     {
         try {
@@ -93,6 +142,14 @@ class BillsController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function retrieves a list of bills that are unpaid and not approved.
+     * Returns the list of bills in a JSON response with a success message.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @return \Illuminate\Http\JsonResponse - A successful response with the list of bills or an error response with exception details.
+     */
     public function approvalBillList()
     {
         try {
@@ -113,9 +170,13 @@ class BillsController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
-     * @param Request $request
-     * @return Renderable
+     * This function handles the storage of a new bill. It validates the input data, calculates tax if applicable,
+     * and saves the bill details into the database. Additionally, it handles file uploads, triggers necessary events,
+     * and generates relevant documents. If the company settings require bill approval, it marks the bill as approved
+     * based on the supplier's auto-approve setting.
+     *
+     * @param  \Illuminate\Http\Request  $request - The request object containing bill details.
+     * @return \Illuminate\Http\JsonResponse - A successful response with a success message or an error response with exception details.
      */
     public function store(Request $request)
     {
@@ -262,6 +323,16 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * Update a bill record with the provided data.
+     *
+     * This function updates a bill record in the database based on the specified ID and request data,
+     * including optional file upload, tax calculations, and maintenance status updates.
+     *
+     * @param \Illuminate\Http\Request $request The HTTP request object containing the bill data.
+     * @param int $id The ID of the bill to be updated.
+     * @return \Illuminate\Http\JsonResponse A JSON response indicating success or failure of the update operation.
+     */
     public function updateBill(Request $request, $id)
     {
         try {
@@ -361,6 +432,17 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function approves a specific bill by updating its 'approved' status to true.
+     * It performs the following operations:
+     * 1. Finds the bill with the given ID that belongs to the same company as the authenticated user.
+     * 2. Updates the 'approved' field of the bill to true.
+     * 3. Returns a success message in a JSON response if the update is successful.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param int $id - The ID of the bill to be approved.
+     * @return \Illuminate\Http\JsonResponse - A successful response with a success message or an error response with exception details.
+     */
     public function approveBill($id)
     {
         try {
@@ -370,6 +452,20 @@ class BillsController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * This function approves multiple bills and sends email notifications for each approved bill.
+     * It performs the following operations:
+     * For each bill:
+     *    - Retrieves the bill details along with associated seller and owner folio contacts.
+     *    - Updates the 'approved' field of the bill to true.
+     *    - Constructs and sends an email notification to the relevant contact.
+     *    - Logs the approval activity and email notification in the PropertyActivity and PropertyActivityEmail models, respectively.
+     * If any exception occurs during the process, it rolls back the transaction and returns a 500 error response with the exception message.
+     *
+     * @param \Illuminate\Http\Request $request - The request containing the list of bill IDs to be approved.
+     * @return \Illuminate\Http\JsonResponse - A successful response with a success message or an error response with exception details.
+     */
     public function approveMultipleBill(Request $request)
     {
         try {
@@ -425,9 +521,15 @@ class BillsController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
-     * @param int $id
-     * @return Renderable
+     * This function deletes a specific bill by its ID.
+     *
+     * The function performs the following operations:
+     * 1. Attempts to delete the bill with the specified ID from the database.
+     * 2. If the deletion is successful, returns a success message in a JSON response with a 200 status code.
+     * 3. If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @param int $id The ID of the bill to be deleted.
+     * @return \Illuminate\Http\JsonResponse The response indicating success or failure of the delete operation.
      */
     public function destroy($id)
     {
@@ -439,6 +541,18 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * Delete multiple bills from the database based on the given IDs.
+     *
+     * The function performs the following operations:
+     * 1. Wraps the deletion process in a database transaction to ensure atomicity.
+     * 2. Iterates through the array of bill IDs (`deleteBill`) provided in the request and deletes each bill.
+     * 3. If all deletions are successful within the transaction, returns a success message in a JSON response with a 200 status code.
+     * 4. If an exception occurs during the transaction, catches it and returns an error message and stack trace in a JSON response with a 500 status code.
+     *
+     * @param \Illuminate\Http\Request $request The HTTP request containing the list of bill IDs to delete.
+     * @return \Illuminate\Http\JsonResponse The response indicating success or failure of the delete operation.
+     */
     public function multipleBillDelete(Request $request)
     {
         try {
@@ -452,6 +566,20 @@ class BillsController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+
+    /**
+     * Retrieve a list of maintenance jobs assigned to a specific supplier for a given property.
+     *
+     * This function retrieves maintenance jobs that match the following criteria:
+     * 1. Associated with the specified supplier ID in the MaintenanceAssignSupplier table.
+     * 2. Belonging to the specified property ID.
+     * 3. Have a status of 'Assigned'.
+     * 4. Belong to the authenticated user's company ID.
+     *
+     * @param int $property_id The ID of the property for which maintenance jobs are to be retrieved.
+     * @param int $supplier_id The ID of the supplier whose assigned maintenance jobs are to be retrieved.
+     * @return \Illuminate\Http\JsonResponse The response containing the list of filtered maintenance jobs and a success message, or an error message with a 500 status code if an exception occurs.
+     */
     public function getJobList($property_id, $supplier_id)
     {
         try {
@@ -464,7 +592,12 @@ class BillsController extends Controller
     }
 
     /**
-     * THIS FUNCTION IS USED TO PAY A SINGLE BILL FROM BILL INFO MODAL
+     * Process payment for a bill, update financial records and ledger entries.
+     *
+     * This function processes the payment for a bill identified by its ID, updating owner/seller folio balances, supplier details, creating receipts, and updating ledger entries accordingly.
+     *
+     * @param int $id The ID of the bill to be paid.
+     * @return \Illuminate\Http\JsonResponse A JSON response indicating the success or failure of the payment process.
      */
     public function payBill($id)
     {
@@ -658,7 +791,18 @@ class BillsController extends Controller
     }
 
     /**
-     * THIS FUNCTION IS USED TO PAY SELECTED BILL FROM BILL LIST
+     * This function processes the payment of selected bills. It performs the following operations:
+     * 1. For each bill in the request, retrieves the bill and related owner folio information.
+     * 2. Checks if the owner folio has sufficient balance to pay the bill amount.
+     * 3. Updates the owner folio and supplier details with the payment information.
+     * 4. Creates receipt records for the payment, updating owner and supplier folios.
+     * 5. Updates the folio ledger for both owner and supplier.
+     * 6. Stores the owner transaction details.
+     * 7. Marks the bill as paid in the database.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param Request $request - The request object containing the list of bills to be paid.
+     * @return \Illuminate\Http\Response - A successful response message or an error response with exception details.
      */
     public function selectedBillPay(Request $request)
     {
@@ -809,10 +953,18 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function retrieves detailed information about a tenant's receipt based on the tenant folio ID.
+     * It gathers details about the tenant, the property, rent management information, and applicable discounts or adjustments.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param  int  $id - The tenant folio ID.
+     * @return \Illuminate\Http\JsonResponse - A successful response with tenant receipt information and rent management details or an error response with exception details.
+     */
     public function tenantReciptInfo($id)
     {
         try {
-            $folio        = TenantFolio::where('id', $id)->select('tenant_contact_id', 'property_id','paid_to')->first();
+            $folio        = TenantFolio::where('id', $id)->select('tenant_contact_id', 'property_id', 'paid_to')->first();
             $tenantRecipt = Properties::where('id', $folio->property_id)->with('tenantOne.tenantFolio', 'currentOwner', 'invoices')->first();
             $fromDate = date('Y-m-d', strtotime($folio->paid_to . '+' . '1 days'));
             $rentManagement = RentManagement::where('from_date', $fromDate)->where('tenant_id', $folio->tenant_contact_id)->where('property_id', $folio->property_id)->with('rentDiscount:id,discount_amount', 'rentAdjustment:id,tenant_id,rent_amount,active_date')->first();
@@ -826,6 +978,15 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function retrieves a list of unpaid bills for a specific property and owner.
+     * It fetches details about the property, owner, supplier, maintenance, and related bills.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param  int  $pro_id - The property ID.
+     * @param  int  $owner_id - The owner folio ID.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the list of pending bills or an error response with exception details.
+     */
     public function owner_pending_bill($pro_id, $owner_id)
     {
         try {
@@ -835,6 +996,15 @@ class BillsController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+    /**
+     * This function retrieves a list of paid bills for a specific property and owner.
+     * It fetches details about the property, owner, supplier, maintenance, and related bills.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param  int  $pro_id - The property ID.
+     * @param  int  $owner_id - The owner folio ID.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the list of pending bills or an error response with exception details.
+     */
     public function owner_paid_bill($pro_id, $owner_id)
     {
         try {
@@ -856,6 +1026,14 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function retrieves the agreement fee details for a specific property.
+     * It fetches details about the owner's plan addon, property fees, and folio fees related to the agreement date.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param  int  $propertyId - The ID of the property.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the agreement fee details or an error response with exception details.
+     */
     public function getAgreementFee($propertyId)
     {
         try {
@@ -892,6 +1070,14 @@ class BillsController extends Controller
         }
     }
 
+    /**
+     * This function creates a manual bill for a specific owner folio and property.
+     * It triggers the manual bill creation process and returns a success message if the bill is created successfully.
+     * If any exception occurs during the process, it returns a 500 error response with the exception message.
+     *
+     * @param  \Illuminate\Http\Request  $request - The request object containing owner folio ID, property ID, amount, description, date, and manual bill ID.
+     * @return \Illuminate\Http\JsonResponse - A successful response with the manual bill creation message or an error response with exception details.
+     */
     public function chargeManualFee(Request $request)
     {
         try {

@@ -19,10 +19,10 @@
                     <strong>(w) 1111 2222</strong>
                     <br />
                     <div>
-                        www.cliqproperty.com
+                        www.myday.com
                     </div>
                     <div>
-                        reply@cliqproperty.com
+                        reply@myday.com
                     </div>
                     <div>
                         {{ $property_address->value }} <br />

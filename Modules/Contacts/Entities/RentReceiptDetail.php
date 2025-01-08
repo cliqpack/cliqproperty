@@ -15,4 +15,8 @@ class RentReceiptDetail extends Model
     {
         return \Modules\Contacts\Database\factories\RentReceiptDetailFactory::new();
     }
+
+    public function RentManagement () {
+        return $this->hasOne(RentManagement::class, 'id', 'rent_management_id');
+    }
 }
