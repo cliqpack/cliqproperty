@@ -33,10 +33,10 @@
                     <div>
                         <strong>(w) {{ $user['work_phone'] ?? '61489921018' }}</strong>
                         <br>
-                        <span>{{ $user['email'] ?? 'info@myday.com' }}</span><br>
+                        <span>{{ $user['email'] ?? 'info@cliqproperty.com' }}</span><br>
 
                         <div>
-                            {{ $property_address->value }} <br />
+                            {{ $property_address->value ?? null }} <br />
                         </div>
                         <div>
                             ABN:85 654 549 014
@@ -53,7 +53,7 @@
             <div class="clearfix" style="margin-bottom: 20px;">
                 <span style="float:left">
                     <br />
-                    {{ $owner_contacts['reference'] }} <br />
+                    {{ $owner_contacts['reference'] ?? null}} <br />
                     {{ $owner_address->value ?? '1234 Main Street, Sydney, NSW 2000' }} <br />
 
                 </span>
@@ -61,16 +61,16 @@
                 <div style="float:right; margin-right: 40px">
                     <span style="font-weight: bold; font-size: 1.5rem; color: {{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000' }}">Statement</span><br>
                   <span>Tax Invoice</span><br>
-                    Account {{ $owner_folio->code }}<br />
+                    Account {{ $owner_folio->code ?? null }}<br />
                     Statement #25 <br />
                     6 Feb 2023
                 </div>
             </div>
             <div class="clearfix">
                 <div style="width: 50%; float:left">
-                    <span style="font-weight:bolder; font-size:16px">{{ $property_address->value }}</span><br>
+                    <span style="font-weight:bolder; font-size:16px">{{ $property_address->value ?? null }}</span><br>
                     Rented for ${{ $tenant->rent }} per {{ $tenant->rent_type }} <br>
-                    Tenant {{ $tenant->tenantContact->reference }} is paid to {{ $tenant->paid_to }}
+                    Tenant {{ $tenant->tenantContact->reference ?? null }} is paid to {{ $tenant->paid_to ?? null }}
                 </div>
                 <div style="width: 50%; float:right">
                     <table class="table1">
@@ -123,30 +123,30 @@
                             {{ $multipleProperty['property_address']['state'] }}
                             {{ $multipleProperty['property_address']['postcode'] }} --}}
                         </span><br>
-                        Rented for ${{ $multipleProperty['tenant_folio']['rent'] }} per
-                        {{ $multipleProperty['tenant_folio']['rent_type'] }} <br>
-                        Tenant {{ $multipleProperty['tenant_folio']['tenant_contact']['reference'] }} is paid to
-                        {{ $multipleProperty['tenant_folio']['paid_to'] }}
+                        Rented for ${{ $multipleProperty['tenant_folio']['rent'] ?? null }} per
+                        {{ $multipleProperty['tenant_folio']['rent_type'] ?? null }} <br>
+                        Tenant {{ $multipleProperty['tenant_folio']['tenant_contact']['reference']  ?? null}} is paid to
+                        {{ $multipleProperty['tenant_folio']['paid_to'] ?? null}}
                     </div>
                     <td>
                         @foreach ($multipleProperty['tenant_folio']['total_property_paid_rent'] as $rent)
                 <tr>
-                    <td class="td2" colspan="8">Rent {{ $rent['description'] }}</td>
+                    <td class="td2" colspan="8">Rent {{ $rent['description'] ?? null}}</td>
                     <td class="td2" colspan="2"></td>
-                    <td class="td2" colspan="2">${{ $rent['amount'] }}</td>
+                    <td class="td2" colspan="2">${{ $rent['amount'] ?? null}}</td>
                 </tr>
             @endforeach
             @foreach ($multipleProperty['tenant_folio']['total_paid_invoice'] as $invoice)
                 <tr>
-                    <td class="td2" colspan="8">{{ $invoice['description'] }}</td>
+                    <td class="td2" colspan="8">{{ $invoice['description'] ?? null }}</td>
                     <td class="td2" colspan="2"></td>
-                    <td class="td2" colspan="2">${{ $invoice['amount'] }}</td>
+                    <td class="td2" colspan="2">${{ $invoice['amount'] ?? null}}</td>
                 </tr>
             @endforeach
             @foreach ($multipleProperty['property_bill'] as $bill)
                 <tr>
-                    <td class="td2" colspan="8">{{ $bill['details'] }}</td>
-                    <td class="td2" colspan="2">${{ $bill['amount'] }}</td>
+                    <td class="td2" colspan="8">{{ $bill['details'] ?? null }}</td>
+                    <td class="td2" colspan="2">${{ $bill['amount'] ?? null}}</td>
                     <td class="td2" colspan="2"></td>
                 </tr>
             @endforeach
@@ -167,22 +167,22 @@
             </tr>
             @foreach ($agencyBillList as $agencyBill)
                 <tr>
-                    <td class="td2" colspan="8">{{ $agencyBill['details'] }}</td>
-                    <td class="td2" colspan="2">${{ $agencyBill['amount'] }}</td>
+                    <td class="td2" colspan="8">{{ $agencyBill['details'] ?? null}}</td>
+                    <td class="td2" colspan="2">${{ $agencyBill['amount']  ?? null }}</td>
                     <td class="td2" colspan="2"></td>
                 </tr>
             @endforeach
             @foreach ($totalDepositList as $depositList)
                 <tr>
-                    <td class="td2" colspan="8">{{ $depositList['description'] }}</td>
+                    <td class="td2" colspan="8">{{ $depositList['description'] ?? null}}</td>
                     <td class="td2" colspan="2"></td>
-                    <td class="td2" colspan="2">${{ $depositList['amount'] }}</td>
+                    <td class="td2" colspan="2">${{ $depositList['amount'] ?? null }}</td>
                 </tr>
             @endforeach
             @foreach ($totalWithdrawList as $withdrawList)
                 <tr>
-                    <td class="td2" colspan="8">{{ $withdrawList['description'] }}</td>
-                    <td class="td2" colspan="2">${{ $withdrawList['amount'] }}</td>
+                    <td class="td2" colspan="8">{{ $withdrawList['description'] ?? null }}</td>
+                    <td class="td2" colspan="2">${{ $withdrawList['amount'] ?? null}}</td>
                     <td class="td2" colspan="2"></td>
                 </tr>
             @endforeach
