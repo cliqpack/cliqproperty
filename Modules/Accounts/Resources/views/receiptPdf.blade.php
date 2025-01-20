@@ -16,9 +16,19 @@
     <div class="page">
         <div style="margin-bottom: 2em">
             <div class="clearfix">
-                <div style="float:left">
-                    <img src="{{ getenv('API_IMAGE').$brandLogo['brand_image'] }}" style="width: 100px;  object-fit: cover;" alt="Brand Image">
+                <div style="float: left; display: flex; align-items: center;">
+                    @if(isset($brandLogo['brand_image']) && $brandLogo['brand_image'])
+                        <img
+                            src="{{ getenv('API_IMAGE') . $brandLogo['brand_image'] }}"
+                            style="width: 100px; height: auto; object-fit: cover; border-radius: 8px;"
+                            alt="Brand Image">
+                    @else
+                        <div style="width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; background-color: #f0f0f0; color: #555; border-radius: 8px; font-size: 14px; text-align: center; border: 1px solid #ddd;">
+                            No Logo
+                        </div>
+                    @endif
                 </div>
+
                 <div style="float:right; text-align: right; width: calc(100% - 120px);"> <!-- Adjust the width accordingly -->
                     <div>
                         <strong>(w) {{ $user['work_phone'] ? $user['work_phone'] : '61489921018' }}</strong>
@@ -26,7 +36,7 @@
                         <div>
                             {{ $user['email'] ? $user['email'] : 'info@myday.com' }}
                         </div>
-                       
+
                         <div>
                             {{ $property_address->value }} <br />
                         </div>

@@ -170,7 +170,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/supplier/summary/transaction/{id}', [Modules\Accounts\Http\Controllers\SupplierFolioSummary\SupplierFolioSummaryController::class, 'supplierTransaction']);
     Route::get('/supplier/summary/transaction/byreport/{id}', [Modules\Accounts\Http\Controllers\SupplierFolioSummary\SupplierFolioSummaryController::class, 'summaryByReport']);
     Route::get('/supplier/summary/transaction/bymonthinfo/{id}', [Modules\Accounts\Http\Controllers\SupplierFolioSummary\SupplierFolioSummaryController::class, 'summaryByMonthInfo']);
-    // for supplier 
+    // for supplier
     Route::get('/supplierfolioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'supplierFolioLedger']);
     Route::post('/supplier/filter/folioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'supplierFilteredFolioLedger']);
     // for seller

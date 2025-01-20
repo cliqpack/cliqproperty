@@ -187,7 +187,8 @@ class DocumentGenerateController extends Controller
         $user = User::where('company_id', auth('api')->user()->company_id)->first();
         $company = CompanySetting::where('company_id', auth('api')->user()->company_id)->first();
         $data['brandStatement'] = $brandStatement;
-        $data['brandLogo'] = $brandLogo;
+        // $data['brandLogo'] = $brandLogo;
+        $data['brandLogo'] = $brandLogo ? $brandLogo : null;
         $data['user'] = $user;
         $data['company'] = $company;
         // return $data;
