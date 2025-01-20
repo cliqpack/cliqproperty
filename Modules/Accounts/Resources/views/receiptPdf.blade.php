@@ -56,11 +56,12 @@
                 <span style="float:left">
                     <br />
                     {{ $owner_contacts['reference'] }} <br />
-                    {{ $owner_address->value }}
+                    {{ $owner_address->value ? $owner_address->value : '1234 Main Street, Sydney, NSW 2000' }} <br />
+
                 </span>
 
                 <div style="float:right; margin-right: 40px">
-                    <span style="font-weight: bold; font-size: 1.5rem; color: {{ $brandStatement->primary_colour }}"
+                    <span style="font-weight: bold; font-size: 1.5rem; color: {{ $brandStatement->primary_colour ? $brandStatement->primary_colour : '#000' }}">Statement</span><br>
 >Tax Invoice</span><br>
                     Account {{ $owner_folio->code }}<br />
                     Statement #25 <br />
@@ -76,9 +77,9 @@
                 <div style="width: 50%; float:right">
                     <table class="table1">
                         <tr>
-                            <th class="th1" style="color:{{ $brandStatement->primary_colour }}">Money In</th>
-                            <th class="th1" style="color:{{ $brandStatement->primary_colour }}">Money Out</th>
-                            <th class="th1" style="color:{{ $brandStatement->primary_colour }}">You Received</th>
+                            <th class="th1" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1) }}">Money In</th>
+                            <th class="th1" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}">Money Out</th>
+                            <th class="th1" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}">You Received</th>
                         </tr>
                         <tr>
                             <td class="td1">${{ $money_in->amount }}</td>
@@ -101,9 +102,9 @@
         <div> --}}
         <table class="table2">
             <tr>
-                <th class="th2" style="color:{{ $brandStatement->primary_colour }}" colspan="8">Details for Account {{ $owner_folio->code }}</th>
-                <th class="th2" style="color:{{ $brandStatement->primary_colour }}" colspan="2">Money out</th>
-                <th class="th2" style="color:{{ $brandStatement->primary_colour }}" colspan="2">Money in</th>
+                <th class="th2" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1) }}" colspan="8">Details for Account {{ $owner_folio->code }}</th>
+                <th class="th2" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}" colspan="2">Money out</th>
+                <th class="th2" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}" colspan="2">Money in</th>
             </tr>
             <tr>
                 <td class="td2" colspan="8">Balance brought forward</td>
@@ -115,11 +116,15 @@
                     <div style="margin: 20px 0px;">
                         <span
                             style="font-weight:bolder; font-size:16px">{{ $multipleProperty['property_address']['number'] }}
-                            {{ $multipleProperty['property_address']['street'] }}
-                            {{ $multipleProperty['property_address']['street'] }}
+                            {{ $multipleProperty['property_address']['street'] ? $multipleProperty['property_address']['street'] : '' }}
+                            {{ $multipleProperty['property_address']['suburb'] ? $multipleProperty['property_address']['suburb'] : '' }}
+                            {{ $multipleProperty['property_address']['state'] ? $multipleProperty['property_address']['state'] : '' }}
+                            {{ $multipleProperty['property_address']['postcode'] ? $multipleProperty['property_address']['postcode'] : '' }}</span><br>
+                            {{-- {{ $multipleProperty['property_address']['street'] }}
                             {{ $multipleProperty['property_address']['suburb'] }}
                             {{ $multipleProperty['property_address']['state'] }}
-                            {{ $multipleProperty['property_address']['postcode'] }}</span><br>
+                            {{ $multipleProperty['property_address']['postcode'] }} --}}
+                        </span><br>
                         Rented for ${{ $multipleProperty['tenant_folio']['rent'] }} per
                         {{ $multipleProperty['tenant_folio']['rent_type'] }} <br>
                         Tenant {{ $multipleProperty['tenant_folio']['tenant_contact']['reference'] }} is paid to
