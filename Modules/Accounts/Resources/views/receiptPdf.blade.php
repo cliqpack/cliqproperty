@@ -31,11 +31,9 @@
 
                 <div style="float:right; text-align: right; width: calc(100% - 120px);"> <!-- Adjust the width accordingly -->
                     <div>
-                        <strong>(w) {{ $user['work_phone'] ? $user['work_phone'] : '61489921018' }}</strong>
+                        <strong>(w) {{ $user['work_phone'] ?? '61489921018' }}</strong>
                         <br>
-                        <div>
-                            {{ $user['email'] ? $user['email'] : 'info@myday.com' }}
-                        </div>
+                        <span>{{ $user['email'] ?? 'info@myday.com' }}</span><br>
 
                         <div>
                             {{ $property_address->value }} <br />
@@ -44,7 +42,7 @@
                             ABN:85 654 549 014
                         </div>
                         <div>
-                            Licence:{{ $company['licence_number'] ? $company['licence_number'] : '088702L' }}
+                            Licence: {{ $company['licence_number'] ?? '088702L' }}
                         </div>
                     </div>
                 </div>
@@ -56,13 +54,13 @@
                 <span style="float:left">
                     <br />
                     {{ $owner_contacts['reference'] }} <br />
-                    {{ $owner_address->value ? $owner_address->value : '1234 Main Street, Sydney, NSW 2000' }} <br />
+                    {{ $owner_address->value ?? '1234 Main Street, Sydney, NSW 2000' }} <br />
 
                 </span>
 
                 <div style="float:right; margin-right: 40px">
-                    <span style="font-weight: bold; font-size: 1.5rem; color: {{ $brandStatement->primary_colour ? $brandStatement->primary_colour : '#000' }}">Statement</span><br>
->Tax Invoice</span><br>
+                    <span style="font-weight: bold; font-size: 1.5rem; color: {{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000' }}">Statement</span><br>
+                  <span>Tax Invoice</span><br>
                     Account {{ $owner_folio->code }}<br />
                     Statement #25 <br />
                     6 Feb 2023
@@ -77,9 +75,9 @@
                 <div style="width: 50%; float:right">
                     <table class="table1">
                         <tr>
-                            <th class="th1" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1) }}">Money In</th>
-                            <th class="th1" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}">Money Out</th>
-                            <th class="th1" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}">You Received</th>
+                            <th class="th1" style="color:{{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000' }}">Money In</th>
+                            <th class="th1" style="color:{{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000'}}">Money Out</th>
+                            <th class="th1" style="color:{{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000'}}">You Received</th>
                         </tr>
                         <tr>
                             <td class="td1">${{ $money_in->amount }}</td>
@@ -102,9 +100,9 @@
         <div> --}}
         <table class="table2">
             <tr>
-                <th class="th2" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1) }}" colspan="8">Details for Account {{ $owner_folio->code }}</th>
-                <th class="th2" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}" colspan="2">Money out</th>
-                <th class="th2" style="color:{{ $brandStatement->primary_colour ? $brandStatement->primary_colour :rgba(0, 0, 0, 0.1)}}" colspan="2">Money in</th>
+                <th class="th2" style="color:{{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000' }}" colspan="8">Details for Account {{ $owner_folio->code }}</th>
+                <th class="th2" style="color:{{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000'}}" colspan="2">Money out</th>
+                <th class="th2" style="color:{{ isset($brandStatement->primary_colour) ? $brandStatement->primary_colour : '#000'}}" colspan="2">Money in</th>
             </tr>
             <tr>
                 <td class="td2" colspan="8">Balance brought forward</td>
