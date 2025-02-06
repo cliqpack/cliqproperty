@@ -11,6 +11,7 @@ use Modules\Accounts\Entities\ReconcilliationMonthsDetails;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Entities\BankDepositList;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerDetailsDaily;
 use Modules\Accounts\Entities\GeneratedWithdrawal;
 use Modules\Accounts\Entities\Receipt;
 use Modules\Accounts\Entities\RMonthsDetailsAdjustment;
@@ -37,13 +38,42 @@ class ReconcillationController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }
+    // public function reconcillationListDetails(Request $request)
+    // {
+
+    //     try {
+    //         $today = Date('Y-m');
+    //         $reconcillationList = ReconcilliationMonthsDetails::where('r_month_id', $request->id)->where('company_id', auth('api')->user()->company_id)->with('reconcilliationMonth')->first();
+    //         $ledgerBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('date', 'LIKE', '%'.$today.'%')->sum('closing_balance');
+    //         return response()->json(
+    //             [
+    //                 'data' => $reconcillationList,
+    //                 'ledgerBalance' => $ledgerBalance,
+    //                 'message' => 'Successful'
+    //             ],
+    //             200
+    //         );
+    //     } catch (\Exception $ex) {
+    //         return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
+    //     }
+    // }
+
     public function reconcillationListDetails(Request $request)
     {
+        // return $request;
 
         try {
             $today = Date('Y-m');
+            $reconMonth = ReconcilliationMonths::where('id', $request->id)->where('company_id', auth()->user()->company_id)->first();
+
+            if ($reconMonth) {
+                $today = Carbon::parse($reconMonth->date)->format('Y-m');
+                // return $date;
+            }
+            // return $today;
             $reconcillationList = ReconcilliationMonthsDetails::where('r_month_id', $request->id)->where('company_id', auth('api')->user()->company_id)->with('reconcilliationMonth')->first();
-            $ledgerBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('date', 'LIKE', '%'.$today.'%')->sum('closing_balance');
+            $ledgerBalance = FolioLedgerDetailsDaily::where('company_id', auth('api')->user()->company_id)->where('date', 'LIKE', '%'.$today.'%')->sum('amount');
+            // return $ledgerBalance;
             return response()->json(
                 [
                     'data' => $reconcillationList,

@@ -2079,7 +2079,7 @@ class AccountsController extends Controller
      * Reverse any supplier transaction if supplier transaction paid via receipt and clear Ledger details
      * Reverse rent payment and also adjust tenant paid to date
      * Reverse any invoice full paid or partial paid invoice payment and clear ledger details accordingly
-     * 
+     *
      * @param  int  $id - The ID of the receipt.
      * @return \Illuminate\Http\JsonResponse - A successful response for Receipt reversed or an error response with exception details.
      */

@@ -42,6 +42,7 @@ class DisbursementController extends Controller
             $offset = $page_qty * ($request->page - 1);
             $dd = OwnerFolio::whereColumn('total_money', '<=', 'money_in')->orWhereColumn('balance', '<=', 'total_balance')
                 ->orWhere('next_disburse_date', '<=', date('Y-m-d'))->pluck('id')->toArray();
+
             $owners = OwnerFolio::whereIn('id', $dd)->where('status', true)->where('company_id', auth('api')->user()->company_id)->count();
             $agencySupplierId = SupplierDetails::select('id')->where('company_id', auth('api')->user()->company_id)->where('system_folio', true)->first();
             if ($type === 'DueOwners') {

@@ -18,7 +18,17 @@
         <div style="margin-bottom: 2em">
             <div class="clearfix">
                 <div style="float:left">
-                    <img src="{{ getenv('API_IMAGE').$brandLogo['brand_image'] ?? null}}" style="width: 100px;  object-fit: cover;" alt="Brand Image">
+                    {{-- <img src="{{ getenv('API_IMAGE').$brandLogo['brand_image'] ?? null}}" style="width: 100px;  object-fit: cover;" alt="Brand Image"> --}}
+                        @if(isset($brandLogo['brand_image']) && $brandLogo['brand_image'])
+                        <img
+                            src="{{ getenv('API_IMAGE') . $brandLogo['brand_image'] }}"
+                            style="width: 100px; height: auto; object-fit: cover; border-radius: 8px;"
+                            alt="Brand Image">
+                        @else
+                        <div style="width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; background-color: #f0f0f0; color: #555; border-radius: 8px; font-size: 14px; text-align: center; border: 1px solid #ddd;">
+                            No Logo
+                        </div>
+                        @endif
                 </div>
                 <div class="right-content">
 
