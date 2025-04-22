@@ -26,7 +26,28 @@ class RentManagementController extends Controller
         $part_payment = 0;
         while ($totalAmount > 0) {
             $this->generateRentCycle($fromDate, $tenantId, $propertyId, $type);
+            
             $rentManagement = RentManagement::where('from_date', $fromDate)->where('tenant_id', $tenantId)->where('property_id', $propertyId)->with('rentAdjustment:id,tenant_id,rent_amount')->first();
+            if (!$rentManagement) {
+                $yearMonth = date('Y-m', strtotime($fromDate));
+                
+                $rentManagement = RentManagement::where('from_date', 'LIKE', $yearMonth.'%')
+                    ->where('tenant_id', $tenantId)
+                    ->where('property_id', $propertyId)
+                    ->with('rentAdjustment:id,tenant_id,rent_amount')
+                    ->first();
+                    
+                // Log the fallback to date pattern match if it works
+               
+            }
+            
+            // Check if $rentManagement is still null after both attempts
+            if (!$rentManagement) {
+                // Log error or handle the missing rent management record appropriately
+                \Log::error("Rent management record not found for date: $fromDate, tenant ID: $tenantId, property ID: $propertyId");
+                break; // Exit the loop since we can't continue without a valid record
+            }
+         
             $rentReceiptDetails = new RentReceiptDetail();
             $received = $credit = 0;
             $fromDateStatus = false;
@@ -252,6 +273,7 @@ class RentManagementController extends Controller
             $this->rentManagementCycle($dates, $tenantId, $propertyId, $rentManagement->rent, ucfirst($type));
         }
     }
+    
     public function rentManagementCycle($dates, $tenantId, $propertyId, $rent, $type)
     {
         $tenant_tax = TenantFolio::select('rent_includes_tax')->where('tenant_contact_id', $tenantId)->where('company_id', auth('api')->user()->company_id)->first();
@@ -277,6 +299,109 @@ class RentManagementController extends Controller
                 $rManagement->save();
             }
         }
+    }
+
+    //karim code
+    // public function rentManagementCycle($startDate, $tenantId, $propertyId, $rent, $type, $duration = 12)
+    // {
+    //     // Ensure startDate is a string
+    //     if (is_array($startDate)) {
+    //         // If an array is passed, use the first element or specify which element to use
+    //         $startDate = is_array($startDate) && !empty($startDate) ? array_values($startDate)[0] : date('Y-m-d');
+    //     }
+
+    //     // Get tenant tax status
+    //     $tenant_tax = TenantFolio::select('rent_includes_tax')
+    //         ->where('tenant_contact_id', $tenantId)
+    //         ->where('company_id', auth('api')->user()->company_id)
+    //         ->first();
+        
+    //     // Determine the correct COA based on tax inclusion
+    //     $coa = Account::select('id')
+    //         ->where('account_name', $tenant_tax && $tenant_tax->rent_includes_tax ? 'Rent (with tax)' : 'Rent')
+    //         ->where('account_number', $tenant_tax && $tenant_tax->rent_includes_tax ? 230 : 200)
+    //         ->where('company_id', auth('api')->user()->company_id)
+    //         ->first();
+        
+    //     try {
+    //         // Convert start date to DateTime object - ensure we're using the exact date provided
+    //         $currentDate = new DateTime($startDate);
+            
+    //         // Handle first month (which might be partial)
+    //         $firstMonthEnd = clone $currentDate;
+    //         $firstMonthEnd->modify('last day of this month');
+            
+    //         // Calculate prorated rent for first month if starting mid-month
+    //         $daysInFirstMonth = (int)$firstMonthEnd->format('d');
+    //         $currentDay = (int)$currentDate->format('d');
+    //         $daysOccupied = $daysInFirstMonth - $currentDay + 1;
+    //         $firstMonthRent = round(($rent / $daysInFirstMonth) * $daysOccupied, 2);
+            
+    //         // Create first month entry - use the exact date provided as the start date
+    //         $this->createRentCycle(
+    //             $currentDate->format('Y-m-d'),  // This will be the exact date provided
+    //             $firstMonthEnd->format('Y-m-d'),
+    //             $tenantId,
+    //             $propertyId,
+    //             $firstMonthRent,
+    //             $coa->id,
+    //             $type
+    //         );
+            
+    //         // Move to first day of next month for subsequent entries
+    //         $nextMonth = clone $firstMonthEnd;
+    //         $nextMonth->modify('+1 day');
+            
+    //         // Create entries for remaining months
+    //         for ($i = 1; $i < $duration; $i++) {
+    //             $cycleStart = clone $nextMonth;
+                
+    //             // Get last day of current month
+    //             $cycleEnd = clone $cycleStart;
+    //             $cycleEnd->modify('last day of this month');
+                
+    //             // Create rent cycle entry
+    //             $this->createRentCycle(
+    //                 $cycleStart->format('Y-m-d'),
+    //                 $cycleEnd->format('Y-m-d'),
+    //                 $tenantId,
+    //                 $propertyId,
+    //                 $rent,
+    //                 $coa->id,
+    //                 $type
+    //             );
+                
+    //             // Move to first day of next month
+    //             $nextMonth = clone $cycleEnd;
+    //             $nextMonth->modify('+1 day');
+    //         }
+            
+    //         return true;
+    //     } catch (\Exception $e) {
+    //         // Log error or handle exception
+    //         \Log::error('Error in rent management cycle: ' . $e->getMessage());
+    //         return false;
+    //     }
+    // }
+
+/**
+ * Create a single rent management entry
+ */
+    private function createRentCycle($fromDate, $toDate, $tenantId, $propertyId, $rent, $accountId, $type)
+    {
+        $rManagement = new RentManagement();
+        $rManagement->from_date = $fromDate;
+        $rManagement->to_date = $toDate;
+        $rManagement->tenant_id = $tenantId;
+        $rManagement->property_id = $propertyId;
+        $rManagement->rent = $rent;
+        $rManagement->due = $rent;
+        $rManagement->account_id = $accountId;
+        $rManagement->type = $type;
+        $rManagement->company_id = auth('api')->user()->company_id;
+        $rManagement->save();
+        
+        return $rManagement;
     }
     public function generateAdjustedRent($fromDate, $toDate, $givenDate, $oldRent, $newRent, $type)
     {

@@ -18,6 +18,7 @@ use Modules\Contacts\Entities\OwnerFolio;
 use Modules\Accounts\Entities\BankDepositList;
 use Modules\Contacts\Entities\SupplierDetails;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Accounts\Entities\FolioLedgerDetailsDaily;
 use Modules\Accounts\Entities\UploadBankFile;
 use Modules\Contacts\Entities\OwnerContact;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Storage;
 use Modules\Accounts\Entities\OwnerFolioTransaction;
 use Modules\Accounts\Entities\RentAction;
 use Modules\Accounts\Http\Controllers\RentManagement\RentManagementController;
+use Modules\Contacts\Entities\RentManagement;
 use Modules\Messages\Http\Controllers\ActivityMessageTriggerController;
 
 class AccountsController extends Controller
@@ -166,6 +168,23 @@ class AccountsController extends Controller
      */
     public function store(Request $request)
     {
+
+        // rent management due issues dubugging
+        // return "dhfafdadf";
+        // $folio = TenantFolio::where('id', $request->selectedFolio)->with('property', 'tenantContact.property.ownerOne.ownerFolio', 'tenantContact.property.currentOwner.ownerFolio')->select('*')->first();
+        // // return $folio;
+
+        // $paidTo = $folio->paid_to;
+
+        // $fromDate = date('Y-m-d', strtotime($paidTo . '+' . '1 days'));
+        // return $fromDate;
+        // return $paidTo;
+        // $rentManagement = RentManagement::where('from_date', $fromDate)->where('tenant_id', $folio->tenant_contact_id)->where('property_id', $folio->property->id)->with('rentAdjustment:id,tenant_id,rent_amount')->first();
+        // return $rentManagement;
+        // if ($rentManagement->due > $rentManagement->received) {
+        //     return $rentManagement->due;
+        // }
+        // return $rentManagement;
         try {
             $receipt__id = '';
             DB::transaction(function () use ($request, &$receipt__id) {
@@ -320,6 +339,9 @@ class AccountsController extends Controller
                         $rent = $tenantAccountFolio->rent;
 
                         $paidTo = $tenantAccountFolio->paid_to;
+                        
+                        // print_r($paidTo);
+                        // return $paidTo;
                         $rentType = strtolower($tenantAccountFolio->rent_type);
 
                         $rentManagementUpdate = new RentManagementController();
@@ -350,6 +372,37 @@ class AccountsController extends Controller
                         $ledger->closing_balance = $ledger->closing_balance + $receipt->rent_amount;
                         $ledger->updated = 1;
                         $ledger->save();
+                        $receiptDate = $request->receipt_date ? Carbon::parse($request->receipt_date) : Carbon::today();
+                        //folio ledger balance
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', 'Owner')->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                        if ($ledgerBalance) {
+                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $receipt->rent_amount;
+                                $ledgerBalance->save();
+                            // } 
+                            // else {
+
+                            //     $newLedgerBalance = new FolioLedgerBalance();
+                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                            //     $newLedgerBalance->date = $receiptDate;
+                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                            //     $newLedgerBalance->closing_balance = $receipt->rent_amount;
+                            //     $newLedgerBalance->updated = 0;
+                            //     $newLedgerBalance->debit = 0;
+                            //     $newLedgerBalance->credit = 0;
+                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                            //     $newLedgerBalance->save();
+                            // }
+                        }
+
+                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $receipt->rent_amount;
+                        // $ledgerBalance->updated = 1;
+                        // $ledgerBalance->save();
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -442,6 +495,37 @@ class AccountsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance + $bondAmount;
                         $ledger->save();
+                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $supplier_det->id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                        // $ledgerBalance->updated = 1;
+                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $bondAmount;
+                        // $ledgerBalance->save();
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $supplier_det->id)->where('folio_type', 'Supplier')->orderBy('id', 'desc')->first();
+                        if ($ledgerBalance) {
+                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $bondAmount;
+                                $ledgerBalance->save();
+                            // } 
+                            // else {
+
+                            //     $newLedgerBalance = new FolioLedgerBalance();
+                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                            //     $newLedgerBalance->date = $receiptDate;
+                            //     $newLedgerBalance->folio_id = $supplier_det->id;
+                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                            //     $newLedgerBalance->closing_balance =$bondAmount;
+                            //     $newLedgerBalance->updated = 0;
+                            //     $newLedgerBalance->debit = 0;
+                            //     $newLedgerBalance->credit = 0;
+                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                            //     $newLedgerBalance->save();
+                            // }
+                        }
+
+
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
 
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
@@ -496,6 +580,35 @@ class AccountsController extends Controller
                         $ledger->closing_balance = $ledger->closing_balance + $depositAmout;
                         $ledger->updated = 1;
                         $ledger->save();
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->first();
+                        $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $depositAmout;
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->save();
+
+                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->first();
+                        // if ($ledgerBalance) {
+                        //     $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                        //     if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                        //         $ledgerBalance->updated = 1;
+                        //         $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $depositAmout;
+                        //         $ledgerBalance->save();
+                        //     } else {
+
+                        //         $newLedgerBalance = new FolioLedgerBalance();
+                        //         $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                        //         $newLedgerBalance->date = $receiptDate;
+                        //         $newLedgerBalance->folio_id = $folio->id;
+                        //         $newLedgerBalance->folio_type = $receipt->folio_type;
+                        //         $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                        //         $newLedgerBalance->closing_balance =$depositAmout;
+                        //         $newLedgerBalance->updated = 0;
+                        //         $newLedgerBalance->debit = 0;
+                        //         $newLedgerBalance->credit = 0;
+                        //         $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                        //         $newLedgerBalance->save();
+                        //     }
+                        // }
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -624,6 +737,38 @@ class AccountsController extends Controller
                                         $ledger->updated = 1;
                                         $ledger->closing_balance = $ledger->closing_balance + $invAmount;
                                         $ledger->save();
+                                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $invoicesData->supplier_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                                        // $ledgerBalance->updated = 1;
+                                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invAmount;
+                                        // $ledgerBalance->save();
+
+                                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $invoicesData->supplier_folio_id)->where('folio_type', 'Supplier')->orderBy('id', 'desc')->first();
+                                        if ($ledgerBalance) {
+                                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                                $ledgerBalance->updated = 1;
+                                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invAmount;
+                                                $ledgerBalance->save();
+                                            // } 
+                                            // else {
+
+                                            //     $newLedgerBalance = new FolioLedgerBalance();
+                                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                                            //     $newLedgerBalance->date = $receiptDate;
+                                            //     $newLedgerBalance->folio_id = $invoicesData->supplier_folio_id;
+                                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                                            //     $newLedgerBalance->closing_balance =$invAmount;
+                                            //     $newLedgerBalance->updated = 0;
+                                            //     $newLedgerBalance->debit = 0;
+                                            //     $newLedgerBalance->credit = 0;
+                                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                                            //     $newLedgerBalance->save();
+                                            // }
+                                        }
+
+                                        
                                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -643,6 +788,36 @@ class AccountsController extends Controller
                                         $ledger->updated = 1;
                                         $ledger->closing_balance = $ledger->closing_balance + $invAmount;
                                         $ledger->save();
+                                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                                        // $ledgerBalance->updated = 1;
+                                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invAmount;
+                                        // $ledgerBalance->save();
+
+                                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', 'Owner')->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                                        if ($ledgerBalance) {
+                                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                                $ledgerBalance->updated = 1;
+                                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invAmount;
+                                                $ledgerBalance->save();
+                                            // } 
+                                            // else {
+
+                                            //     $newLedgerBalance = new FolioLedgerBalance();
+                                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                                            //     $newLedgerBalance->date = $receiptDate;
+                                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                                            //     $newLedgerBalance->closing_balance = $invAmount;
+                                            //     $newLedgerBalance->updated = 0;
+                                            //     $newLedgerBalance->debit = 0;
+                                            //     $newLedgerBalance->credit = 0;
+                                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                                            //     $newLedgerBalance->save();
+                                            // }
+                                        }
                                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -737,6 +912,36 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $supplierReceiptAmount;
                             $ledger->save();
+                            // $ledgerBalance = FolioLedgerBalance::where('folio_id', $request->supplier_receipt['supplier_folio'])->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            // $ledgerBalance->updated = 1;
+                            // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $supplierReceiptAmount;
+                            // $ledgerBalance->save();
+
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $request->supplier_receipt['supplier_folio'])->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            if ($ledgerBalance) {
+                                // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                                // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                    $ledgerBalance->updated = 1;
+                                    $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $supplierReceiptAmount;
+                                    $ledgerBalance->save();
+                                // }
+                                //  else {
+
+                                //     $newLedgerBalance = new FolioLedgerBalance();
+                                //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                                //     $newLedgerBalance->date = $receiptDate;
+                                //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                                //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                                //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                                //     $newLedgerBalance->closing_balance = $supplierReceiptAmount;
+                                //     $newLedgerBalance->updated = 0;
+                                //     $newLedgerBalance->debit = 0;
+                                //     $newLedgerBalance->credit = 0;
+                                //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                                //     $newLedgerBalance->save();
+                                // }
+                            }
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -943,6 +1148,37 @@ class AccountsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance - $receipt->rent_amount;
                         $ledger->save();
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->orderBy('id', 'desc')->first();
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->closing_balance = $ledgerBalance->closing_balance - $receipt->rent_amount;
+                        $ledgerBalance->save();
+
+                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->orderBy('id', 'desc')->first();
+                        // if ($ledgerBalance) {
+                        //     $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                        //     if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                        //         $ledgerBalance->updated = 1;
+                        //         $ledgerBalance->closing_balance = $ledgerBalance->closing_balance - $receipt->rent_amount;
+                        //         $ledgerBalance->save();
+                        //     } else {
+
+                        //         $newLedgerBalance = new FolioLedgerBalance();
+                        //         $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                        //         $newLedgerBalance->date = $receiptDate;
+                        //         $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                        //         $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                        //         $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                        //         $newLedgerBalance->closing_balance = $receipt->rent_amount;
+                        //         $newLedgerBalance->updated = 0;
+                        //         $newLedgerBalance->debit = 0;
+                        //         $newLedgerBalance->credit = 0;
+                        //         $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                        //         $newLedgerBalance->save();
+                        //     }
+                        // }
+
+                        
 
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
@@ -963,6 +1199,36 @@ class AccountsController extends Controller
                         $ledger->closing_balance = $ledger->closing_balance + $receipt->rent_amount;
                         $ledger->updated = 1;
                         $ledger->save();
+                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', 'Owner')->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $receipt->rent_amount;
+                        // $ledgerBalance->updated = 1;
+                        // $ledgerBalance->save();
+
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', 'Owner')->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                        if ($ledgerBalance) {
+                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $receipt->rent_amount;
+                                $ledgerBalance->save();
+                            // } 
+                            // else {
+
+                            //     $newLedgerBalance = new FolioLedgerBalance();
+                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                            //     $newLedgerBalance->date = $receiptDate;
+                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                            //     $newLedgerBalance->closing_balance = $receipt->rent_amount;
+                            //     $newLedgerBalance->updated = 0;
+                            //     $newLedgerBalance->debit = 0;
+                            //     $newLedgerBalance->credit = 0;
+                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                            //     $newLedgerBalance->save();
+                            // }
+                        }
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1108,6 +1374,36 @@ class AccountsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance - $bondAmount;
                         $ledger->save();
+                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->orderBy('id', 'desc')->first();
+                        // $ledgerBalance->updated = 1;
+                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance - $bondAmount;
+                        // $ledgerBalance->save();
+
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->orderBy('id', 'desc')->first();
+                        if ($ledgerBalance) {
+                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance - $bondAmount;
+                                $ledgerBalance->save();
+                            // }
+                            //  else {
+
+                            //     $newLedgerBalance = new FolioLedgerBalance();
+                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                            //     $newLedgerBalance->date = $receiptDate;
+                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                            //     $newLedgerBalance->closing_balance = $bondAmount;
+                            //     $newLedgerBalance->updated = 0;
+                            //     $newLedgerBalance->debit = 0;
+                            //     $newLedgerBalance->credit = 0;
+                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                            //     $newLedgerBalance->save();
+                            // }
+                        }
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
 
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
@@ -1128,6 +1424,36 @@ class AccountsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance + $bondAmount;
                         $ledger->save();
+                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $supplier_det->id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                        // $ledgerBalance->updated = 1;
+                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $bondAmount;
+                        // $ledgerBalance->save();
+
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $supplier_det->id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                        if ($ledgerBalance) {
+                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $bondAmount;
+                                $ledgerBalance->save();
+                            // } 
+                            // else {
+
+                            //     $newLedgerBalance = new FolioLedgerBalance();
+                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                            //     $newLedgerBalance->date = $receiptDate;
+                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                            //     $newLedgerBalance->closing_balance = $bondAmount;
+                            //     $newLedgerBalance->updated = 0;
+                            //     $newLedgerBalance->debit = 0;
+                            //     $newLedgerBalance->credit = 0;
+                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                            //     $newLedgerBalance->save();
+                            // }
+                        }
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
 
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
@@ -1309,6 +1635,34 @@ class AccountsController extends Controller
                                     $ledger->updated = 1;
                                     $ledger->closing_balance = $ledger->closing_balance - $invoiceAmount;
                                     $ledger->save();
+                                    $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->orderBy('id', 'desc')->first();
+                                    $ledgerBalance->updated = 1;
+                                    $ledgerBalance->closing_balance = $ledgerBalance->closing_balance - $invoiceAmount;
+                                    $ledgerBalance->save();
+                                    // $ledgerBalance = FolioLedgerBalance::where('folio_id', $folio->id)->where('folio_type', $receipt->folio_type)->orderBy('id', 'desc')->first();
+                                    // if ($ledgerBalance) {
+                                    //     $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                                    //     if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                    //         $ledgerBalance->updated = 1;
+                                    //         $ledgerBalance->closing_balance = $ledger->closing_balance - $invoiceAmount;
+                                    //         $ledgerBalance->save();
+                                    //     } else {
+
+                                    //         $newLedgerBalance = new FolioLedgerBalance();
+                                    //         $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                                    //         $newLedgerBalance->date = $receiptDate;
+                                    //         $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                                    //         $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                                    //         $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                                    //         $newLedgerBalance->closing_balance = $invoiceAmount;
+                                    //         $newLedgerBalance->updated = 0;
+                                    //         $newLedgerBalance->debit = 0;
+                                    //         $newLedgerBalance->credit = 0;
+                                    //         $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                                    //         $newLedgerBalance->save();
+                                    //     }
+                                    // }
                                     $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                     $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                     $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1328,6 +1682,36 @@ class AccountsController extends Controller
                                         $ledger->updated = 1;
                                         $ledger->closing_balance = $ledger->closing_balance + $invoiceAmount;
                                         $ledger->save();
+                                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $invoicesData->supplier_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                                        // $ledgerBalance->updated = 1;
+                                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invoiceAmount;
+                                        // $ledgerBalance->save();
+
+                                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $invoicesData->supplier_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                                        if ($ledgerBalance) {
+                                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                                $ledgerBalance->updated = 1;
+                                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invoiceAmount;
+                                                $ledgerBalance->save();
+                                            // } 
+                                            // else {
+
+                                            //     $newLedgerBalance = new FolioLedgerBalance();
+                                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                                            //     $newLedgerBalance->date = $receiptDate;
+                                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                                            //     $newLedgerBalance->closing_balance = $invoiceAmount;
+                                            //     $newLedgerBalance->updated = 0;
+                                            //     $newLedgerBalance->debit = 0;
+                                            //     $newLedgerBalance->credit = 0;
+                                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                                            //     $newLedgerBalance->save();
+                                            // }
+                                        }
                                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1347,6 +1731,35 @@ class AccountsController extends Controller
                                         $ledger->updated = 1;
                                         $ledger->closing_balance = $ledger->closing_balance + $invoiceAmount;
                                         $ledger->save();
+                                        // $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                                        // $ledgerBalance->updated = 1;
+                                        // $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invoiceAmount;
+                                        // $ledgerBalance->save();
+                                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerFolioId)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                                        if ($ledgerBalance) {
+                                            // $ledgerDate = $ledgerBalance->date ? Carbon::parse($ledgerBalance->date) : Carbon::parse($ledgerBalance->updated_at);
+                                            // if ($ledgerDate->format('Y-m') === $receiptDate->format('Y-m')) {
+
+                                                $ledgerBalance->updated = 1;
+                                                $ledgerBalance->closing_balance = $ledgerBalance->closing_balance + $invoiceAmount;
+                                                $ledgerBalance->save();
+                                            // }
+                                            //  else {
+
+                                            //     $newLedgerBalance = new FolioLedgerBalance();
+                                            //     $newLedgerBalance->company_id = $ledgerBalance->company_id;
+                                            //     $newLedgerBalance->date = $receiptDate;
+                                            //     $newLedgerBalance->folio_id = $ledgerBalance->folio_id;
+                                            //     $newLedgerBalance->folio_type = $ledgerBalance->folio_type;
+                                            //     $newLedgerBalance->opening_balance = $ledgerBalance->closing_balance;
+                                            //     $newLedgerBalance->closing_balance = $invoiceAmount;
+                                            //     $newLedgerBalance->updated = 0;
+                                            //     $newLedgerBalance->debit = 0;
+                                            //     $newLedgerBalance->credit = 0;
+                                            //     $newLedgerBalance->ledger_id = $ledgerBalance->ledger_id;
+                                            //     $newLedgerBalance->save();
+                                            // }
+                                        }
                                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1615,6 +2028,11 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->to_folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
+                               
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1663,6 +2081,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->to_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1692,6 +2114,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1740,6 +2166,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1765,6 +2195,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Tenant")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1793,6 +2227,10 @@ class AccountsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                         $ledger->save();
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                        $ledgerBalance->save();
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1839,6 +2277,10 @@ class AccountsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                         $ledger->save();
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->to_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                        $ledgerBalance->save();
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                         $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1867,6 +2309,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1916,6 +2362,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1941,6 +2391,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance + $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->from_folio_id)->where('folio_type', "Tenant")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance + $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -1969,6 +2423,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->to_folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2018,6 +2476,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->to_folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2043,6 +2505,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->to_folio_id)->where('folio_type', "Tenant")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2107,6 +2573,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2158,6 +2628,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Tenant")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2186,6 +2660,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2297,6 +2775,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2336,6 +2818,10 @@ class AccountsController extends Controller
                                 $ledger->updated = 1;
                                 $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                                 $ledger->save();
+                                $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                                $ledgerBalance->save();
                                 $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                 $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                 $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2364,6 +2850,10 @@ class AccountsController extends Controller
                                 $ledger->updated = 1;
                                 $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                                 $ledger->save();
+                                $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                                $ledgerBalance->save();
                                 $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                 $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                 $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2434,6 +2924,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2484,6 +2978,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Tenant")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2510,6 +3008,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2641,6 +3143,10 @@ class AccountsController extends Controller
                             $ledger->updated = 1;
                             $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                             $ledger->save();
+                            $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                            $ledgerBalance->updated = 1;
+                            $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                            $ledgerBalance->save();
                             $storeLedgerDetails = new FolioLedgerDetailsDaily();
                             $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                             $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2679,6 +3185,10 @@ class AccountsController extends Controller
                                 $ledger->updated = 1;
                                 $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                                 $ledger->save();
+                                $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Owner")->orderBy('id', 'desc')->first();
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                                $ledgerBalance->save();
                                 $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                 $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                 $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -2706,6 +3216,10 @@ class AccountsController extends Controller
                                 $ledger->updated = 1;
                                 $ledger->closing_balance = $ledger->closing_balance - $value->amount;
                                 $ledger->save();
+                                $ledgerBalance = FolioLedgerBalance::where('folio_id', $value->folio_id)->where('folio_type', "Supplier")->orderBy('id', 'desc')->first();
+                                $ledgerBalance->updated = 1;
+                                $ledgerBalance->closing_balance = $ledger->closing_balance - $value->amount;
+                                $ledgerBalance->save();
                                 $storeLedgerDetails = new FolioLedgerDetailsDaily();
                                 $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                                 $storeLedgerDetails->ledger_type = $receipt->new_type;

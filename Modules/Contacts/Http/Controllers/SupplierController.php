@@ -16,6 +16,7 @@ use Modules\Contacts\Entities\SupplierDetails;
 use Modules\Contacts\Entities\SupplierPayments;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Contacts\Entities\ContactDetails;
 
 class SupplierController extends Controller
@@ -360,6 +361,15 @@ class SupplierController extends Controller
                     $storeLedger->opening_balance = 0;
                     $storeLedger->closing_balance = 0;
                     $storeLedger->save();
+                    $storeLedgerBalance = new FolioLedgerBalance();
+                    $storeLedgerBalance->company_id = auth('api')->user()->company_id;
+                    $storeLedgerBalance->date = Date('Y-m-d');
+                    $storeLedgerBalance->folio_id = $supplierDetails->id;
+                    $storeLedgerBalance->folio_type = 'Supplier';
+                    $storeLedgerBalance->opening_balance = 0;
+                    $storeLedgerBalance->closing_balance = 0;
+                    $storeLedgerBalance->ledger_id = $storeLedger->id;
+                    $storeLedgerBalance->save();
 
 
                     foreach ($request->payment as $key => $pay) {
@@ -478,7 +488,7 @@ class SupplierController extends Controller
                         'abn'                   => $request->abn,
                         'notes'                 => $request->notes,
                         'company_id'            => auth('api')->user()->company_id,
-                        'owner' => 1,
+                        'owner' => 0,
                     ]);
                     $contact_details_delete = ContactDetails::where('contact_id', $contactId)->delete();
                     $contact_physical_delete = ContactPhysicalAddress::where('contact_id', $contactId)->delete();
@@ -682,7 +692,7 @@ class SupplierController extends Controller
 
     /**
      * This function retrieves a list of supplier contacts for the currently authenticated user's company.
-     * 
+     *
      * The function performs the following operations:
      * Returns the list of supplier contacts along with a success message in a JSON response with a 200 status code.
      * If an exception occurs, catches it and returns an error message and stack trace in a JSON response with a 500 status code.

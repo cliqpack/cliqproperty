@@ -7,7 +7,7 @@
     <a href="index.php" class="brand-link">
         <!-- <img src="dist/img/WEBLAB.svg" alt="WEBLAB Logo" class="brand-image img-circle elevation-3"> -->
         
-        <img src="dist/img/myday.png" alt="WEBLAB Logo" class="brand-image">
+        <img src="dist/img/cliqproperty1.png" alt="Cliqproperty Logo" class="brand-image">
     </a>
 
     <!-- Sidebar -->

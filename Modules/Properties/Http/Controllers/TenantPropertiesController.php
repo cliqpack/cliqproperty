@@ -30,7 +30,7 @@ class TenantPropertiesController extends Controller
             //end delete//
             $tenant = TenantContact::where('company_id', auth('api')->user()->company_id)->where('user_id', auth('api')->user()->id)->pluck('id');
             $tenant_access=TenantFolio::whereIn('tenant_contact_id', $tenant)->where('tenant_access','1')->pluck('tenant_contact_id');
-            $tenantProperty = TenantProperty::with('tenantContact', 'tenantProperties', 'tenantProperties.property_images', 'tenantProperties.property_address', 'tenantProperties.properties_level')->whereIn('tenant_contact_id', $tenant_access)->get();
+            $tenantProperty = TenantProperty::with('tenantContact.tenantFolio', 'tenantProperties', 'tenantProperties.property_images', 'tenantProperties.property_address', 'tenantProperties.properties_level')->whereIn('tenant_contact_id', $tenant_access)->get();
 
             return response()->json([
                 'data' => $tenantProperty,

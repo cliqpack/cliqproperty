@@ -147,6 +147,7 @@ public function getRentArrersAttribute()
 {
     try {
         $today = Carbon::now();
+
         $paidToDate = Carbon::createFromDate($this->paid_to);
         $startDate = clone $paidToDate->addDay();
         $totalDays = $startDate->diffInDays($today);

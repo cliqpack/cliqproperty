@@ -22,6 +22,7 @@ use Modules\Properties\Entities\PropertyActivity;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Entities\Bill;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Accounts\Entities\Invoices;
 use Modules\Contacts\Entities\ContactDetails;
 use Modules\Contacts\Entities\OwnerPlanAddon;
@@ -122,6 +123,7 @@ class OwnerController extends Controller
 
     public function owner_contact_store(Request $request)
     {
+        // return "hello";
         try {
             $attributeNames = array(
                 // Owner Contact
@@ -593,12 +595,24 @@ class OwnerController extends Controller
                     }
                     $storeLedger = new FolioLedger();
                     $storeLedger->company_id = auth('api')->user()->company_id;
-                    $storeLedger->date = Date('Y-m-d');
+                    // $storeLedger->date = Date('Y-m-d');
+                    $storeLedger->date = $request->agreement_start;;
                     $storeLedger->folio_id = $request->folio_id == "" ? $oFolioId : $request->folio_id;
                     $storeLedger->folio_type = 'Owner';
                     $storeLedger->opening_balance = 0;
                     $storeLedger->closing_balance = 0;
                     $storeLedger->save();
+                    
+                    $storeLedgerBalance = new FolioLedgerBalance();
+                    $storeLedgerBalance->company_id = auth('api')->user()->company_id;
+                    // $storeLedgerBalance->date = Date('Y-m-d');
+                    $storeLedgerBalance->date = $request->agreement_start;
+                    $storeLedgerBalance->folio_id = $request->folio_id == "" ? $oFolioId : $request->folio_id;
+                    $storeLedgerBalance->folio_type = 'Owner';
+                    $storeLedgerBalance->opening_balance = 0;
+                    $storeLedgerBalance->closing_balance = 0;
+                    $storeLedgerBalance->ledger_id = $storeLedger->id;
+                    $storeLedgerBalance->save();
                 });
 
 

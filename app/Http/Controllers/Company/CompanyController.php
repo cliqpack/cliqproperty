@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Modules\Accounts\Entities\Account;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Contacts\Entities\ContactPhysicalAddress;
 use Modules\Contacts\Entities\ContactPostalAddress;
 use Modules\Contacts\Entities\Contacts;
@@ -892,6 +893,15 @@ class CompanyController extends Controller
                 $storeLedger->opening_balance = 0;
                 $storeLedger->closing_balance = 0;
                 $storeLedger->save();
+                $storeLedgerBalance = new FolioLedgerBalance();
+                $storeLedgerBalance->company_id = $company->id;
+                $storeLedgerBalance->date = Date('Y-m-d');
+                $storeLedgerBalance->folio_id = $supplierDetails->id;
+                $storeLedgerBalance->folio_type = 'Supplier';
+                $storeLedgerBalance->opening_balance = 0;
+                $storeLedgerBalance->closing_balance = 0;
+                $storeLedgerBalance->ledger_id = $storeLedger->id;
+                $storeLedgerBalance->save();
 
                 // $companySettingAddress = new Country();
                 // $companySettingAddress->country_name  = $request->country;

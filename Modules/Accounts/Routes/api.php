@@ -158,6 +158,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/ownerfolioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'ownerFolioLedger']);
     Route::post('/owner/filter/folioledger/{id}', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'ownerFilteredFolioLedger']);
     Route::get('/folioledger/next_date_opening_balance', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'next_date_opening_balance']);
+    
     Route::get('/od/summary/transaction/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'odtransaction']);
     Route::get('/owner/summary/transaction/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'transaction']);
     Route::get('/summary/transaction/byreport/{id}', [Modules\Accounts\Http\Controllers\OwnerFolioSummary\OwnerFolioSummaryController::class, 'summaryByReport']);
@@ -230,3 +231,4 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/only-bpay-withdraw', [Modules\Accounts\Http\Controllers\WithdrawController::class, 'onlyBpayWithdraw']);
 });
 Route::get('/generate-pdf', [Modules\Accounts\Http\Controllers\AccountsController::class, 'generatePDF']);
+Route::get('/folioledger/next_month_opening_balance', [Modules\Accounts\Http\Controllers\FolioLedgerController::class, 'next_month_opening_balance']);

@@ -232,9 +232,10 @@ class UserRepository implements UserContruct
                     'email' => $user['email'],
                     'user_type' => "Guest",
                     'company_id' => "0",
-                    'work_phone' => "1111111",
-                    'mobile_phone' => '11',
-                    'password' =>  Hash::make('guest')
+                    'work_phone' => "01819454565",
+                    'mobile_phone' => '01819454565',
+                    'password' =>  Hash::make('password')
+                    
                 ]);
 
                 event(new Registered($user));
@@ -281,6 +282,7 @@ class UserRepository implements UserContruct
 
     public function findUser(array $user)
     {
+        
         try {
             $validator = Validator::make($user, [
                 'email' => 'required|email',

@@ -6,21 +6,21 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounts\Http\Controllers\FolioLedgerController;
 
-class FolioLedgerMonthlyUpdate extends Command
+class FolioBalanceMonthlyUpdate extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'ledger:store';
+    protected $signature = 'ledger:monthly-update';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Folio ledger store';
+    protected $description = 'Process end-of-month ledger balances';
 
     /**
      * Create a new command instance.
@@ -39,13 +39,20 @@ class FolioLedgerMonthlyUpdate extends Command
      */
     public function handle()
     {
+        Log::info('FolioBalanceMonthlyUpdate Command Started');
+
         $ledger = new FolioLedgerController();
-        $data = $ledger->folioLedgerUpdate();
-        return $data;
-        if ($data === 'Successful') {
-            Log::info('folio ledger schedule worked');
+        $response = $ledger->next_month_opening_balance();
+
+       
+        if (is_object($response) && isset($response->original['Status']) && $response->original['Status'] == 'Successful') {
+            Log::info('FolioBalanceMonthlyUpdate Command Executed Successfully');
         } else {
-            Log::info('failed');
+            Log::error('FolioBalanceMonthlyUpdate Command Failed', ['response' => $response]);
         }
+
+        Log::info('FolioBalanceMonthlyUpdate Command Ended');
     }
+
+
 }

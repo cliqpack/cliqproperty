@@ -18,6 +18,7 @@ use Modules\Contacts\Entities\SellerPayment;
 use Modules\Contacts\Entities\SellerProperty;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Contacts\Entities\BuyerFolio;
 use Modules\Contacts\Entities\BuyerPayment;
 use Modules\Contacts\Entities\ContactDetails;
@@ -407,6 +408,16 @@ class SellerController extends Controller
                     $storeLedger->opening_balance = 0;
                     $storeLedger->closing_balance = 0;
                     $storeLedger->save();
+
+                    $storeLedgerBalance = new FolioLedgerBalance();
+                    $storeLedgerBalance->company_id = auth('api')->user()->company_id;
+                    $storeLedgerBalance->date = Date('Y-m-d');
+                    $storeLedgerBalance->folio_id = $sellerFolio->id;
+                    $storeLedgerBalance->folio_type = 'Seller';
+                    $storeLedgerBalance->opening_balance = 0;
+                    $storeLedgerBalance->closing_balance = 0;
+                    $storeLedgerBalance->ledger_id = $storeLedger->id;
+                    $storeLedgerBalance->save();
                     //sales aggrement
                     $propertiesSalesAgreement = new PropertySalesAgreement();
                     $propertiesSalesAgreement->seller_id = $sellerContact->id;

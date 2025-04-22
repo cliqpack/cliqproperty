@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
+use Modules\Accounts\Entities\MonthlyProcessLog;
 use Modules\Accounts\Entities\FolioLedgerDetailsDaily;
 use Modules\Contacts\Entities\OwnerFolio;
 use Modules\Contacts\Entities\SellerFolio;
@@ -23,19 +25,38 @@ class FolioLedgerController extends Controller
     public function index($year, $month)
     {
         try {
+            // $owner = OwnerFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'owner_contact_id', 'folio_code')->with('ownerContacts:id,property_id,contact_id,reference', 'ownerProperties:id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+            //     $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            // }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
+            // $tenant = TenantFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'tenant_contact_id')->with('tenantContacts:id,reference,contact_id,property_id', 'tenantProperties:id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+            //     $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            // }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
+            // $supplier = SupplierDetails::with('supplierContact:id,contact_id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+            //     $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            // }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
+            // $seller = SellerFolio::with('sellerContacts:id,property_id,contact_id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+            //     $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            // }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
             $owner = OwnerFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'owner_contact_id', 'folio_code')->with('ownerContacts:id,property_id,contact_id,reference', 'ownerProperties:id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+                // $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            }, 'folio_ledger.ledger_details_daily' => function($q) use ($year, $month) {
                 $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
-            }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
+            }])->where('company_id', auth('api')->user()->company_id)->get();
             $tenant = TenantFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'tenant_contact_id')->with('tenantContacts:id,reference,contact_id,property_id', 'tenantProperties:id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+                // $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            }, 'folio_ledger.ledger_details_daily'=> function($q) use ($year, $month) {
                 $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
-            }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
+            }])->where('company_id', auth('api')->user()->company_id)->get();
             $supplier = SupplierDetails::with('supplierContact:id,contact_id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+                // $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            }, 'folio_ledger.ledger_details_daily' => function($q) use ($year, $month) {
                 $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
-            }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
+            }])->where('company_id', auth('api')->user()->company_id)->get();
             $seller = SellerFolio::with('sellerContacts:id,property_id,contact_id,reference')->with(['folio_ledger' => function ($q) use ($year, $month) {
+                // $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
+            }, 'folio_ledger.ledger_details_daily'=> function($q) use ($year, $month) {
                 $q->where('date', 'LIKE', '%' . $year . '-' . $month . '%');
-            }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->get();
-
+            }])->where('company_id', auth('api')->user()->company_id)->get();
 
             return response()->json([
                 'data' => $owner,
@@ -220,6 +241,82 @@ class FolioLedgerController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
     }
+
+    public function next_month_opening_balance()
+    {
+        
+        try {
+            $currentMonth = Carbon::now()->startOfMonth()->toDateString();
+            $alreadyProcessed = MonthlyProcessLog::where('process_name', 'next_month_opening_balance')
+            ->where('process_month', $currentMonth)
+            ->exists();
+
+                if ($alreadyProcessed) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'This process has already been run for ' . Carbon::now()->format('F Y')
+                    ], 409);
+                }
+                DB::transaction(function () use ($currentMonth) {
+                // Get last month's date range
+                    $lastMonthStart = Carbon::now()->subMonth()->startOfMonth()->toDateString();
+                    $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth()->toDateString();
+
+                    // Get all folio ledgers for last month
+                    $folioLedgers = FolioLedger::whereBetween('date', [$lastMonthStart, $lastMonthEnd])->get();
+                    
+                    foreach ($folioLedgers as $ledger) {
+                        // Calculate closing balance
+                        $creditTotal = FolioLedgerDetailsDaily::where('folio_ledgers_id', $ledger->id)
+                            ->where('type', 'credit')->sum('amount');
+                        $debitTotal = FolioLedgerDetailsDaily::where('folio_ledgers_id', $ledger->id)
+                            ->where('type', 'debit')->sum('amount');
+                        // $closingBalance = ($ledger->opening_balance + $creditTotal) - $debitTotal;
+                        $closingBalance = $ledger->closing_balance;
+                        // return $closingBalance;
+                        
+                        FolioLedgerBalance::create([
+                            'company_id' => $ledger->company_id,
+                            'folio_id' => $ledger->folio_id,
+                            'folio_type' => $ledger->folio_type,
+                            'date' => $currentMonth,
+                            'opening_balance' => $closingBalance,
+                            'closing_balance' => 0,
+                            'debit' => $debitTotal,
+                            'credit' => $creditTotal,
+                            'ledger_id'=> $ledger->id,
+                            'updated' => 0,
+                        ]);
+
+                        // Create new ledger for the next month with previous closing balance as opening balance
+                        FolioLedger::create([
+                            'company_id' => $ledger->company_id,
+                            'date' => $currentMonth,
+                            'folio_id' => $ledger->folio_id,
+                            'folio_type' => $ledger->folio_type,
+                            'opening_balance' => $closingBalance,
+                            'closing_balance' => 0,
+                            'updated' => 0,
+                        ]);
+                    }
+                MonthlyProcessLog::create([
+                    'process_name' => 'next_month_opening_balance',
+                    'process_month' => $currentMonth,
+                ]);
+            });
+
+            return response()->json([
+                'Status' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                "status" => false,
+                "error" => "An error occurred",
+                "message" => $th->getMessage()
+            ], 500);
+        }
+    }
+
 
     public function folioLedgerUpdate()
     {

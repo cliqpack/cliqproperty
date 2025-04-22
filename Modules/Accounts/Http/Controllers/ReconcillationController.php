@@ -65,15 +65,23 @@ class ReconcillationController extends Controller
         try {
             $today = Date('Y-m');
             $reconMonth = ReconcilliationMonths::where('id', $request->id)->where('company_id', auth()->user()->company_id)->first();
-
-            if ($reconMonth) {
-                $today = Carbon::parse($reconMonth->date)->format('Y-m');
-                // return $date;
-            }
+            // return $reconMonth; 
+            $reconMonthDate = Carbon::parse($reconMonth->date)->format('Y-m');
+           
+            // if ($reconMonth) {
+            //     $today = Carbon::parse($reconMonth->date)->format('Y-m');
+            //     // return $date;
+            // }
             // return $today;
             $reconcillationList = ReconcilliationMonthsDetails::where('r_month_id', $request->id)->where('company_id', auth('api')->user()->company_id)->with('reconcilliationMonth')->first();
-            $ledgerBalance = FolioLedgerDetailsDaily::where('company_id', auth('api')->user()->company_id)->where('date', 'LIKE', '%'.$today.'%')->sum('amount');
-            // return $ledgerBalance;
+            // return $reconcillationList;
+            // $ledgerBalance = FolioLedgerDetailsDaily::where('company_id', auth('api')->user()->company_id)->where('date', 'LIKE', '%'.$today.'%')->sum('amount');
+
+            $ledgerBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('closing_balance');
+            // $closingBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('closing_balance');
+            // $openingBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('opening_balance');
+            // $ledgerBalance = $openingBalance + $closingBalance;
+         
             return response()->json(
                 [
                     'data' => $reconcillationList,
@@ -178,11 +186,14 @@ class ReconcillationController extends Controller
 
     public function reconcilliation_store()
     {
+        // return "hewrlo";
         try {
             DB::transaction(function () {
                 $today = Date('Y-m-d');
                 $reconMonth = ReconcilliationMonths::wheremonth('date', Carbon::parse(now())->format('m'))->whereYear('date', Carbon::parse(now())->format('Y'))->where('company_id', auth()->user()->company_id)->get();
+                // return $reconMonth;
                 $count = count($reconMonth);
+                // return $count;
                 if ($count == 0) {
                     $prevMonthhh = Carbon::now()->startOfMonth()->subMonth()->format('Y-m');
                     $enddate = Carbon::createFromFormat('Y-m-d', $today)->endOfMonth()->format('Y-m-d');
@@ -208,7 +219,11 @@ class ReconcillationController extends Controller
                     $reconMonth->save();
 
                     $date = Date('Y-m');
-                    $receipt = Receipt::where('receipt_date', 'LIKE', '%' . $date . '%')->whereIn('type', ['Tenant Receipt', 'Receipt', 'Folio Receipt', 'Invoice'])->where('reversed', false)->where('company_id', auth('api')->user()->company_id)->get();
+                    // miraz old code 
+                    $receipt = Receipt::where('created_at', 'LIKE', '%' . $date . '%')->whereIn('type', ['Tenant Receipt', 'Receipt', 'Folio Receipt', 'Invoice'])->where('reversed', false)->where('company_id', auth('api')->user()->company_id)->get();
+                    // $receipt = Receipt::where('created_at', 'LIKE', '%' . $date . '%')->whereIn('type', ['Tenant Receipt', 'Receipt', 'Folio Receipt', 'Invoice'])->where('reversed', false)->where('company_id', auth('api')->user()->company_id)->get();
+
+                   
                     $newReceipt = $receipt->sum('amount');
                     $bankDepositeList = BankDepositList::where('receipt_date', 'LIKE', '%' . $date . '%')->where('company_id', auth('api')->user()->company_id)->get();
                     $BankDeposite = $bankDepositeList->where('status', 'Deposited')->where('reconcile', 'unreconciled')->where('company_id', auth('api')->user()->company_id)->sum('amount');
@@ -258,6 +273,7 @@ class ReconcillationController extends Controller
     }
     public function reconcilliation($id)
     {
+        // return $id;
         try {
             $db = DB::transaction(function () use ($id) {
                 $reconMonth = ReconcilliationMonths::where('id', $id)->where('company_id', auth()->user()->company_id)->first();
@@ -268,10 +284,11 @@ class ReconcillationController extends Controller
 
                 $nextMonth = Carbon::createFromFormat('Y-m-d', $reconMonth->date)->startOfMonth()->addMonth()->format('Y-m');
                 $nextReconMonth = ReconcilliationMonths::where('date', 'LIKE', '%' . $nextMonth . '%')->where('company_id', auth()->user()->company_id)->first();
-
+                // miraz code 
                 $receipt = Receipt::select('amount', 'receipt_date')->where('receipt_date', 'LIKE', '%' . $newDate . '%')->whereIn('type', ['Tenant Receipt', 'Receipt', 'Folio Receipt', 'Invoice'])->where('reversed', false)->where('company_id', auth('api')->user()->company_id)->get();
+                // $receipt = Receipt::select('amount', 'receipt_date','created_at')->where('created_at', 'LIKE', '%' . $newDate . '%')->whereIn('type', ['Tenant Receipt', 'Receipt', 'Folio Receipt', 'Invoice'])->where('reversed', false)->where('company_id', auth('api')->user()->company_id)->get();
                 $newReceipt = $receipt->sum('amount');
-
+                // return $newReceipt;
                 $bankDepositeList = BankDepositList::where('receipt_date', 'LIKE', '%' . $newDate . '%')->where('company_id', auth('api')->user()->company_id)->get();
 
                 $BankDeposite = $bankDepositeList->where('status', 'Deposited')->where('reconcile', 'unreconciled')->where('company_id', auth('api')->user()->company_id)->sum('amount');
@@ -313,6 +330,10 @@ class ReconcillationController extends Controller
 
 
                 $reconMonthDetails = ReconcilliationMonthsDetails::where('r_month_id', $id)->first();
+                // return $reconMonthDetails;
+                // return 
+                if ($reconMonthDetails){
+                    // return "karim";
                 $net_bank_balance = $reconMonthDetails->bank_statement_balance + $BankDeposite - $unreconcillied_withdrawls + $adjustment + $notBankDeposite - $withdrawals_not_processed;
                 $journal_balance = $reconMonthDetails->cashbook_amount + $newReceipt - $new_withdrawls;
                 $reconMonthDetails->unreconciled_deposits = $BankDeposite;
@@ -327,7 +348,8 @@ class ReconcillationController extends Controller
                 $reconMonthDetails->company_id = auth('api')->user()->company_id;
                 $reconMonthDetails->status = 1;
                 $reconMonthDetails->save();
-                return response()->json(['message' => 'Successfull'], 200);
+                return response()->json(['message' => 'Successfull',"recon_month_details"=> $reconMonthDetails], 200);
+                }
             });
             return $db;
         } catch (\Exception $ex) {

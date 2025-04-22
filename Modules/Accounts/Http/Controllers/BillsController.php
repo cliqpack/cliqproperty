@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Modules\Accounts\Entities\Account;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Accounts\Entities\FolioLedgerDetailsDaily;
 use Modules\Accounts\Entities\OwnerFolioTransaction;
 use Modules\Contacts\Entities\OwnerContact;
@@ -742,6 +743,10 @@ class BillsController extends Controller
                 $ledger->closing_balance = $ledger->closing_balance + $bill->amount;
                 $ledger->updated = 1;
                 $ledger->save();
+                $ledgerBalance = FolioLedgerBalance::where('folio_id', $supplierFolio->id)->where('folio_type', "Supplier")->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                $ledgerBalance->updated = 1;
+                $ledgerBalance->closing_balance = $ledger->closing_balance + $bill->amount;
+                $ledgerBalance->save();
                 $storeLedgerDetails = new FolioLedgerDetailsDaily();
                 $storeLedgerDetails->company_id = auth('api')->user()->company_id;
                 $storeLedgerDetails->ledger_type = $receipt->new_type;
@@ -885,6 +890,10 @@ class BillsController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance - $bill_info->amount;
                         $ledger->save();
+                        $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerfolio->id)->where('folio_type', "Owner")->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->closing_balance = $ledger->closing_balance - $bill_info->amount;
+                        $ledgerBalance->save();
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
 
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;

@@ -18,7 +18,7 @@ class FolioLedger extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = ['company_id'];
     protected $appends =['amount_debit', 'amount_credit'];
 
     protected static function newFactory()

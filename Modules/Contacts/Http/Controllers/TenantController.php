@@ -18,6 +18,7 @@ use Modules\Properties\Entities\PropertyActivity;
 use Illuminate\Support\Facades\DB;
 use Modules\Accounts\Entities\Disbursement;
 use Modules\Accounts\Entities\FolioLedger;
+use Modules\Accounts\Entities\FolioLedgerBalance;
 use Modules\Accounts\Entities\FolioLedgerDetailsDaily;
 use Modules\Accounts\Entities\Receipt;
 use Modules\Accounts\Entities\ReceiptDetails;
@@ -451,6 +452,15 @@ class TenantController extends Controller
                     $storeLedger->opening_balance = 0;
                     $storeLedger->closing_balance = 0;
                     $storeLedger->save();
+                    $storeLedgerBalance = new FolioLedgerBalance();
+                    $storeLedgerBalance->company_id = auth('api')->user()->company_id;
+                    $storeLedgerBalance->date = Date('Y-m-d');
+                    $storeLedgerBalance->folio_id = $tenantFolio->id;
+                    $storeLedgerBalance->folio_type = 'Tenant';
+                    $storeLedgerBalance->opening_balance = 0;
+                    $storeLedgerBalance->closing_balance = 0;
+                    $storeLedgerBalance->ledger_id = $storeLedger->id;
+                    $storeLedgerBalance->save();
 
                     if ($props_data->first_routine != null) {
                         $next_disburse_date = '';
@@ -994,6 +1004,16 @@ class TenantController extends Controller
                         $ledger->updated = 1;
                         $ledger->closing_balance = $ledger->closing_balance - $totalDepositAmount;
                         $ledger->save();
+
+                        // $storeLedgerBalance = new FolioLedgerBalance();
+                        // $storeLedgerBalance->company_id = auth('api')->user()->company_id;
+                        // $storeLedgerBalance->date = Date('Y-m-d');
+                        // $storeLedgerBalance->folio_id = $tenantFolio->id;
+                        // $storeLedgerBalance->folio_type = 'Tenant';
+                        // $storeLedgerBalance->opening_balance = 0;
+                        // $storeLedgerBalance->$ledger->closing_balance - $totalDepositAmount;
+                        // $storeLedgerBalance->ledger_id = $ledger->id;
+                        // $storeLedgerBalance->save();
 
                         $storeLedgerDetails = new FolioLedgerDetailsDaily();
                         $storeLedgerDetails->company_id = auth('api')->user()->company_id;

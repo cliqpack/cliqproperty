@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\FolioLedgerMonthlyUpdate;
+use App\Console\Commands\FolioBalanceMonthlyUpdate;
 use App\Console\Commands\RecurringBill;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -17,6 +18,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         RecurringBill::class,
         FolioLedgerMonthlyUpdate::class,
+        FolioBalanceMonthlyUpdate::class,
     ];
 
     /**
@@ -32,8 +34,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('recurring:propertyfeebills')->everyMinute();
         // $schedule->command('trigger:fees')->everyMinute();
         $schedule->command('trigger:plan')->everyMinute();
-        $schedule->command('ledger:store')->monthly();
+       
         $schedule->command('imap:externalmail')->everyFiveMinutes();
+        // $schedule->command('ledger:monthly-update')->monthlyOn(1, '00:00');
+        $schedule->command('ledger:store')->monthly();
+        $schedule->command('ledger:monthly-update')->monthlyOn(1, '00:00');
+
     }
 
     /**
