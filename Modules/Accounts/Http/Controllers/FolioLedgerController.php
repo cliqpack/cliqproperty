@@ -274,21 +274,6 @@ class FolioLedgerController extends Controller
                         // $closingBalance = ($ledger->opening_balance + $creditTotal) - $debitTotal;
                         $closingBalance = $ledger->closing_balance;
                         // return $closingBalance;
-                        
-                        FolioLedgerBalance::create([
-                            'company_id' => $ledger->company_id,
-                            'folio_id' => $ledger->folio_id,
-                            'folio_type' => $ledger->folio_type,
-                            'date' => $currentMonth,
-                            'opening_balance' => $closingBalance,
-                            'closing_balance' => 0,
-                            'debit' => $debitTotal,
-                            'credit' => $creditTotal,
-                            'ledger_id'=> $ledger->id,
-                            'updated' => 0,
-                        ]);
-
-                        // Create new ledger for the next month with previous closing balance as opening balance
                         FolioLedger::create([
                             'company_id' => $ledger->company_id,
                             'date' => $currentMonth,
@@ -298,6 +283,20 @@ class FolioLedgerController extends Controller
                             'closing_balance' => 0,
                             'updated' => 0,
                         ]);
+                        FolioLedgerBalance::create([
+                            'company_id' => $ledger->company_id,
+                            'folio_id' => $ledger->folio_id,
+                            'folio_type' => $ledger->folio_type,
+                            'date' => $currentMonth,
+                            'opening_balance' => $closingBalance,
+                            'closing_balance' => 0,
+                            'debit' => $debitTotal,
+                            'credit' => $creditTotal,
+                            'ledger_id'=> $folioLedger->id,
+                            'updated' => 0,
+                        ]);
+
+                       
                     }
                 MonthlyProcessLog::create([
                     'process_name' => 'next_month_opening_balance',

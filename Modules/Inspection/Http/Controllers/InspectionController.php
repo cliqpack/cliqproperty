@@ -296,6 +296,8 @@ class InspectionController extends Controller
 
                     $inspectionDate = date('F Y', strtotime($request->inspection_date));
                     $property = Properties::where('id', $request->property_id)->where('company_id', auth('api')->user()->company_id)->with('fetchTenant')->first();
+                    $fromEmail = auth('api')->user()->email;
+                    $tenantEmail = $property->fetchTenant->email;
                     // return $property;
                     $body = "I hope this email finds you well. As part of our ongoing commitment to maintaining the property at " . $property->reference . "in excellent condition, we would like to schedule a routine inspection of the premises. This is an email to remind you that a " . $request['inspection_type'] . " inspection has been scheduled on " . date('F Y', strtotime($request->inspection_date)) . ".\n";
 
@@ -308,9 +310,7 @@ class InspectionController extends Controller
 
                     $body .= $inspectionDetails;
                     if (isset($property->fetchTenant->email)) {
-                        $tenantEmail = $property->fetchTenant->email;
-
-                        $tenantEmail = $property->fetchTenant->email;
+                        
                         // return $tenantEmail;
                         $messageWithMail = new MessageWithMail();
                         $messageWithMail->property_id = $request->property_id;
@@ -329,7 +329,7 @@ class InspectionController extends Controller
                             'property_id' => $request->property_id,
                             'to' => $tenantEmail,
                             'from' => auth('api')->user()->email,
-                            'subject' => "Inspection Notice for " . $property->reference . "from Myday",
+                            'subject' => "Inspection Notice for " . $property->reference . "from Cliqproperty",
                             'body' => $body,
                             'status' => "Sent",
                             'company_id' => auth('api')->user()->company_id,
@@ -337,9 +337,14 @@ class InspectionController extends Controller
 
                         ];
 
-                        $request2 = new \Illuminate\Http\Request();
-                        $request2->replace($data);
-                        Mail::to($tenantEmail)->send(new Messsage($request2));
+                        // $request2 = new \Illuminate\Http\Request();
+                        // $request2->replace($data);
+                        // Mail::to($tenantEmail)->send(new Messsage($request2));
+                        // Mail::to($tenantEmail)->send(new Messsage((object) [
+                        //     'from' => 'info@myday.biz', 
+                        //     'subject' => 'Inspection Reminder from Cliqproperty',
+                        //     'body' => $body,
+                        // ]));
                     }
 
                     if ($request->inspection_type == "Routine" && $tenant_contact) {

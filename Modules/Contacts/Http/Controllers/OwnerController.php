@@ -1163,8 +1163,10 @@ class OwnerController extends Controller
     //Owner Panal
     public function property_owner_panel_info($propertyId)
     {
+       
         try {
             $owner = OwnerContact::with('OwnerProperty', 'OwnerProperty.ownerProperties', 'OwnerFees', 'OwnerFolio', 'OwnerFolio.total_bills_amount', 'ownerPropertyFees', 'ownerPayment')->where('property_id', $propertyId)->where('company_id', auth('api')->user()->company_id)->first();
+            // return $owner;
             $ownerPendingBill = OwnerFolio::select('*')->where('property_id', $propertyId)->withSum('total_bills_amount', 'amount')->withSum('total_due_invoices', 'amount')->where('company_id', auth('api')->user()->company_id)->first();
             $ownerFolio = $owner->ownerFolio;
             $ownerContact = $owner->contacts;
@@ -1176,7 +1178,7 @@ class OwnerController extends Controller
                 'status'  => "Success"
             ], 200);
         } catch (\Exception $ex) {
-            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => [],500]);
         }
     }
     public function property_owner_panel_job($propertyId)
@@ -1198,7 +1200,7 @@ class OwnerController extends Controller
                 'status'  => "Success"
             ], 200);
         } catch (\Exception $ex) {
-            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []]);
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => [],500]);
         }
     }
 

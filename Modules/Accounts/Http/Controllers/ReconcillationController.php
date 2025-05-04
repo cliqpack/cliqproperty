@@ -77,7 +77,9 @@ class ReconcillationController extends Controller
             // return $reconcillationList;
             // $ledgerBalance = FolioLedgerDetailsDaily::where('company_id', auth('api')->user()->company_id)->where('date', 'LIKE', '%'.$today.'%')->sum('amount');
 
-            $ledgerBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('closing_balance');
+            $closingBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('closing_balance');
+            $openingBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('opening_balance');
+            $ledgerBalance = $closingBalance + $openingBalance;
             // $closingBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('closing_balance');
             // $openingBalance = FolioLedger::where('company_id', auth('api')->user()->company_id)->where('created_at', 'LIKE', $reconMonthDate . '%')->sum('opening_balance');
             // $ledgerBalance = $openingBalance + $closingBalance;
