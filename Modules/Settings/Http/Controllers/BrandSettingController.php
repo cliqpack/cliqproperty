@@ -272,59 +272,63 @@ class BrandSettingController extends Controller
     //     }
     // }
     public function uploadBrandLogo(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                // 'brand_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5048', // Adjust the validation rules as needed
-            ]);
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'brand_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5048',
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'error' => $validator->errors(),
-                    'message' => 'Validation failed',
-                    'data' => [],
-                ], 422);
-            }
-            $brandLogo = null;
-            if ($request->hasFile('brand_image')) {
-
-                $file = $request->file('brand_image');
-                $filename = $file->getClientOriginalName();
-                $fileSize = $file->getSize();
-
-
-                $path = config('app.asset_s') . '/Image';
-                $filename_s3 = Storage::disk('s3')->put($path, $file);
-
-
-
-                $brandLogo = BrandSettingLogo::updateOrCreate(
-                    ['company_id' => Auth::guard('api')->user()->company_id],
-                    [
-                        'brand_image' => $filename_s3,
-                        'image_name' => $filename,
-                        'file_size' => $fileSize,
-                    ]
-                );
-            }
-
-
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Brand logo uploaded successfully',
-                'brand_logo' => $brandLogo,
-            ], 200);
-        } catch (\Exception $ex) {
+        if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'error' => ['error'],
-                'message' => $ex->getMessage(),
+                'error' => $validator->errors(),
+                'message' => 'Validation failed',
                 'data' => [],
-            ], 500);
+            ], 422);
         }
+
+        $brandLogo = null;
+
+        if ($request->hasFile('brand_image')) {
+            $file = $request->file('brand_image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $s3Path = 'Image/' . $filename;
+
+            // Upload to S3
+            Storage::disk('s3')->put($s3Path, file_get_contents($file));
+
+            // Generate public URL from s3
+            $imageUrl = Storage::disk('s3')->url($s3Path);
+
+            // Optional: get file size
+            $fileSize = $file->getSize();
+
+            $brandLogo = BrandSettingLogo::updateOrCreate(
+                ['company_id' => Auth::guard('api')->user()->company_id],
+                [
+                    'brand_image' => $s3Path,
+                    'image_name' => $filename,
+                    'file_size' => $fileSize,
+                ]
+            );
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Brand logo uploaded successfully',
+            'brand_logo' => $brandLogo,
+        ], 200);
+
+    } catch (\Exception $ex) {
+        return response()->json([
+            'status' => false,
+            'error' => ['error'],
+            'message' => $ex->getMessage(),
+            'data' => [],
+        ], 500);
     }
+}
+
 
     public function deleteBrandLogo()
     {

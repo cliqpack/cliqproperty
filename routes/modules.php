@@ -7,6 +7,7 @@ use App\Http\Controllers\Module\ModuleController;
 
 
 Route::middleware('auth:api')->group(function () {
+    
     Route::resource('/modules', ModuleController::class);
     Route::post('/moduleDetailsInsertAjax',[ModuleController::class,'moduleDetailsInsertAjax']);
     Route::post('/moduleDetailsDeleteAjax',[ModuleController::class,'moduleDetailsDeleteAjax']);

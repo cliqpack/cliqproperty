@@ -98,24 +98,6 @@ class FolioLedgerController extends Controller
      * Display a listing of the resource.
      * @return Renderable
      */
-    public function ownerFilteredFolioLedger($id, Request $request)
-    {
-        try {
-            $owner = OwnerFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'owner_contact_id', 'folio_code')
-                ->where('id', $id)->where('company_id', auth('api')->user()->company_id)
-                ->with('ownerContacts:id,property_id,contact_id,reference', 'ownerProperties:id,reference')
-                ->with(['folio_ledger' => function ($q) use ($request) {
-                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
-                }, 'folio_ledger.ledger_details_daily'])->first();
-
-            return response()->json([
-                'data' => $owner,
-                'message' => 'Successful'
-            ], 200);
-        } catch (\Throwable $th) {
-            throw $th;
-        }
-    }
 
     public function supplierFolioLedger($id)
     {
@@ -136,6 +118,28 @@ class FolioLedgerController extends Controller
             throw $th;
         }
     }
+
+    
+    public function ownerFilteredFolioLedger($id, Request $request)
+    {
+        try {
+            $owner = OwnerFolio::select('id', 'company_id', 'opening_balance', 'property_id', 'owner_contact_id', 'folio_code')
+                ->where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('ownerContacts:id,property_id,contact_id,reference', 'ownerProperties:id,reference')
+                ->with(['folio_ledger' => function ($q) use ($request) {
+                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
+                }, 'folio_ledger.ledger_details_daily'])->first();
+
+            return response()->json([
+                'data' => $owner,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    
     /**
      * Display a listing of the resource.
      * @return Renderable
@@ -152,6 +156,25 @@ class FolioLedgerController extends Controller
                 // $supplier = SupplierDetails::where('id', $id)->with('supplierContact:id,contact_id,reference')->with(['folio_ledger' => function ($q) use ($request) {
                 //     $q->whereBetween('date', 'LIKE', '%' . $request->from_date . '-' . $request->to_date . '%');
                 // }, 'folio_ledger.ledger_details_daily'])->where('company_id', auth('api')->user()->company_id)->first();
+
+            return response()->json([
+                'data' => $supplier,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+
+     public function sellerFilteredFolioLedger($id, Request $request)
+    {
+        try {
+            $supplier = SellerFolio::where('id', $id)->where('company_id', auth('api')->user()->company_id)
+                ->with('sellerContacts.sellerFolio')
+                ->with(['folio_ledger' => function ($q) use ($request) {
+                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
+                }, 'folio_ledger.ledger_details_daily'])->first();
 
             return response()->json([
                 'data' => $supplier,
@@ -185,23 +208,7 @@ class FolioLedgerController extends Controller
      * Display a listing of the resource.
      * @return Renderable
      */
-    public function sellerFilteredFolioLedger($id, Request $request)
-    {
-        try {
-            $supplier = SellerFolio::where('id', $id)->where('company_id', auth('api')->user()->company_id)
-                ->with('sellerContacts.sellerFolio')
-                ->with(['folio_ledger' => function ($q) use ($request) {
-                    $q->whereBetween('date', [$request->from_date, $request->to_date]);
-                }, 'folio_ledger.ledger_details_daily'])->first();
-
-            return response()->json([
-                'data' => $supplier,
-                'message' => 'Successful'
-            ], 200);
-        } catch (\Throwable $th) {
-            throw $th;
-        }
-    }
+   
 
     /**
      * Show the form for creating a new resource.

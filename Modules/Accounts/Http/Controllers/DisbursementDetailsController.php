@@ -50,6 +50,7 @@ class DisbursementDetailsController extends Controller
         $receipt->company_id     = $company_id;
         $receipt->save();
         return $receipt->id;
+
     }
     public function receiptDetails($id, $allocation, $description, $payment_type, $amount, $folio_id, $folio_type, $account_id, $type, $from_folio_id, $from_folio_type, $to_folio_id, $to_folio_type, $company_id, $disbursed, $reverse_status, $tax, $pay_type, $to)
     {
@@ -84,95 +85,7 @@ class DisbursementDetailsController extends Controller
         return $receiptDetails->id;
     }
 
-    public function disburseOwnerBill ($bill, $totalOwnerAmount) {
-        if ($bill['amount'] <= $totalOwnerAmount) {
-            $det = $bill['details'] ? $bill['details'] : '';
-            $pushObject = new stdClass();
-            $pushObject->name = $det;
-            $pushObject->amount = $bill['amount'];
-            if ($bill['status'] === 'Unpaid') {
-                $receipt = new Receipt();
-                $receipt->property_id    = $bill['property_id'];
-                $receipt->folio_id       = $bill['owner_folio_id'];
-                $receipt->owner_folio_id       = $bill['owner_folio_id'];
-                $receipt->folio_type     = "Owner";
-                $receipt->contact_id     = NULL;
-                $receipt->amount         = $bill['amount'];
-                $receipt->summary         = $bill['bill_account_id'];
-                $receipt->receipt_date   = date('Y-m-d');
-                $receipt->payment_method = "";
-                $receipt->from           = "Owner";
-                $receipt->type           = "Bill";
-                $receipt->new_type       = 'Payment';
-                $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
-                $receipt->updated_by     = "";
-                $receipt->from_folio_id  = $bill['owner_folio_id'];
-                $receipt->from_folio_type = "Owner";
-                $receipt->to_folio_id  = $bill['supplier_folio_id'];
-                $receipt->to_folio_type = "Supplier";
-                $receipt->status         = "Cleared";
-                $receipt->cleared_date   = Date('Y-m-d');
-                $receipt->company_id     = auth('api')->user()->company_id;
-                $receipt->save();
-
-                $ownerBillReceiptDetails = $this->receiptDetails($receipt->id, "Owner Bill", $bill['bill_account_id'], "", $bill['amount'], $bill['owner_folio_id'], "Owner", $bill['bill_account_id'], "Withdraw", $bill['owner_folio_id'], "Owner", $bill['supplier_folio_id'], "Supplier", auth('api')->user()->company_id, 1, '', $bill['include_tax'], 'debit', 'Owner');
-                $supplierBillReceiptDetails = $this->receiptDetails($receipt->id, "Supplier Bill", $bill['bill_account_id'], "", $bill['amount'], $bill['supplier_folio_id'], "Supplier", $bill['bill_account_id'], "Deposit", $bill['owner_folio_id'], "Owner", $bill['supplier_folio_id'], "Supplier", auth('api')->user()->company_id, 1, '', $bill['include_tax'], 'credit', 'Supplier');
-
-                $sFolio = SupplierDetails::where('supplier_contact_id', $bill['supplier_contact_id'])->first();
-                SupplierDetails::where('supplier_contact_id', $bill['supplier_contact_id'])
-                    ->update([
-                        'money_in' => $sFolio->money_in + $bill['amount'],
-                        'balance' => $sFolio->balance + $bill['amount'],
-                    ]);
-                Bill::where('id', $bill['id'])->update(['status' => 'Paid', 'disbursed' => 1, 'receipt_id' => $receipt->id]);
-
-                $ledger = FolioLedger::where('folio_id', $bill['owner_folio_id'])->where('folio_type', 'Owner')->orderBy('id', 'desc')->first();
-                $ledger->updated = 1;
-                $ledger->closing_balance = $ledger->closing_balance - $bill['amount'];
-                $ledger->save();
-                $storeLedgerDetails = new FolioLedgerDetailsDaily();
-
-                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
-                $storeLedgerDetails->ledger_type = $receipt->new_type;
-                $storeLedgerDetails->details = "Supplier bill paid";
-                $storeLedgerDetails->folio_id = $bill['owner_folio_id'];
-                $storeLedgerDetails->folio_type = 'Owner';
-                $storeLedgerDetails->amount = $bill['amount'];
-                $storeLedgerDetails->type = "debit";
-                $storeLedgerDetails->date = date('Y-m-d');
-                $storeLedgerDetails->receipt_id = $receipt->id;
-                $storeLedgerDetails->receipt_details_id = $ownerBillReceiptDetails;
-                $storeLedgerDetails->payment_type = $receipt->payment_method;
-                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
-                $storeLedgerDetails->save();
-
-                $ledger = FolioLedger::where('folio_id', $sFolio->id)->where('folio_type', 'Supplier')->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
-                $ledger->closing_balance = $ledger->closing_balance + $bill['amount'];
-                $ledger->updated = 1;
-                $ledger->save();
-                $storeLedgerDetails = new FolioLedgerDetailsDaily();
-                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
-                $storeLedgerDetails->ledger_type = $receipt->new_type;
-                $storeLedgerDetails->details = "Supplier bill paid";
-                $storeLedgerDetails->folio_id = $sFolio->id;
-                $storeLedgerDetails->folio_type = 'Supplier';
-                $storeLedgerDetails->amount = $bill['amount'];
-                $storeLedgerDetails->type = "credit";
-                $storeLedgerDetails->date = date('Y-m-d');
-                $storeLedgerDetails->receipt_id = $receipt->id;
-                $storeLedgerDetails->receipt_details_id = $supplierBillReceiptDetails;
-                $storeLedgerDetails->payment_type = $receipt->payment_method;
-                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
-                $storeLedgerDetails->save();
-            }
-            if ($bill['status'] === 'Paid') {
-                Bill::where('id', $bill['id'])->update(['disbursed' => 1]);
-            }
-            $totalOwnerAmount -= $bill['amount'];
-
-            return [$totalOwnerAmount, $pushObject];
-        }
-    }
+    
 
     public function disburseSellerBill ($bill, $totalSellerAmount) {
         if ($bill['amount'] <= $totalSellerAmount) {
@@ -266,6 +179,96 @@ class DisbursementDetailsController extends Controller
             $totalSellerAmount -= $bill['amount'];
 
             return [$totalSellerAmount, $pushObject];
+        }
+    }
+
+    public function disburseOwnerBill ($bill, $totalOwnerAmount) {
+        if ($bill['amount'] <= $totalOwnerAmount) {
+            $det = $bill['details'] ? $bill['details'] : '';
+            $pushObject = new stdClass();
+            $pushObject->name = $det;
+            $pushObject->amount = $bill['amount'];
+            if ($bill['status'] === 'Unpaid') {
+                $receipt = new Receipt();
+                $receipt->property_id    = $bill['property_id'];
+                $receipt->folio_id       = $bill['owner_folio_id'];
+                $receipt->owner_folio_id       = $bill['owner_folio_id'];
+                $receipt->folio_type     = "Owner";
+                $receipt->contact_id     = NULL;
+                $receipt->amount         = $bill['amount'];
+                $receipt->summary         = $bill['bill_account_id'];
+                $receipt->receipt_date   = date('Y-m-d');
+                $receipt->payment_method = "";
+                $receipt->from           = "Owner";
+                $receipt->type           = "Bill";
+                $receipt->new_type       = 'Payment';
+                $receipt->created_by     = auth('api')->user()->first_name . ' ' . auth('api')->user()->last_name;
+                $receipt->updated_by     = "";
+                $receipt->from_folio_id  = $bill['owner_folio_id'];
+                $receipt->from_folio_type = "Owner";
+                $receipt->to_folio_id  = $bill['supplier_folio_id'];
+                $receipt->to_folio_type = "Supplier";
+                $receipt->status         = "Cleared";
+                $receipt->cleared_date   = Date('Y-m-d');
+                $receipt->company_id     = auth('api')->user()->company_id;
+                $receipt->save();
+
+                $ownerBillReceiptDetails = $this->receiptDetails($receipt->id, "Owner Bill", $bill['bill_account_id'], "", $bill['amount'], $bill['owner_folio_id'], "Owner", $bill['bill_account_id'], "Withdraw", $bill['owner_folio_id'], "Owner", $bill['supplier_folio_id'], "Supplier", auth('api')->user()->company_id, 1, '', $bill['include_tax'], 'debit', 'Owner');
+                $supplierBillReceiptDetails = $this->receiptDetails($receipt->id, "Supplier Bill", $bill['bill_account_id'], "", $bill['amount'], $bill['supplier_folio_id'], "Supplier", $bill['bill_account_id'], "Deposit", $bill['owner_folio_id'], "Owner", $bill['supplier_folio_id'], "Supplier", auth('api')->user()->company_id, 1, '', $bill['include_tax'], 'credit', 'Supplier');
+
+                $sFolio = SupplierDetails::where('supplier_contact_id', $bill['supplier_contact_id'])->first();
+                SupplierDetails::where('supplier_contact_id', $bill['supplier_contact_id'])
+                    ->update([
+                        'money_in' => $sFolio->money_in + $bill['amount'],
+                        'balance' => $sFolio->balance + $bill['amount'],
+                    ]);
+                Bill::where('id', $bill['id'])->update(['status' => 'Paid', 'disbursed' => 1, 'receipt_id' => $receipt->id]);
+
+                $ledger = FolioLedger::where('folio_id', $bill['owner_folio_id'])->where('folio_type', 'Owner')->orderBy('id', 'desc')->first();
+                $ledger->updated = 1;
+                $ledger->closing_balance = $ledger->closing_balance - $bill['amount'];
+                $ledger->save();
+                $storeLedgerDetails = new FolioLedgerDetailsDaily();
+
+                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
+                $storeLedgerDetails->ledger_type = $receipt->new_type;
+                $storeLedgerDetails->details = "Supplier bill paid";
+                $storeLedgerDetails->folio_id = $bill['owner_folio_id'];
+                $storeLedgerDetails->folio_type = 'Owner';
+                $storeLedgerDetails->amount = $bill['amount'];
+                $storeLedgerDetails->type = "debit";
+                $storeLedgerDetails->date = date('Y-m-d');
+                $storeLedgerDetails->receipt_id = $receipt->id;
+                $storeLedgerDetails->receipt_details_id = $ownerBillReceiptDetails;
+                $storeLedgerDetails->payment_type = $receipt->payment_method;
+                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
+                $storeLedgerDetails->save();
+
+                $ledger = FolioLedger::where('folio_id', $sFolio->id)->where('folio_type', 'Supplier')->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                $ledger->closing_balance = $ledger->closing_balance + $bill['amount'];
+                $ledger->updated = 1;
+                $ledger->save();
+                $storeLedgerDetails = new FolioLedgerDetailsDaily();
+                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
+                $storeLedgerDetails->ledger_type = $receipt->new_type;
+                $storeLedgerDetails->details = "Supplier bill paid";
+                $storeLedgerDetails->folio_id = $sFolio->id;
+                $storeLedgerDetails->folio_type = 'Supplier';
+                $storeLedgerDetails->amount = $bill['amount'];
+                $storeLedgerDetails->type = "credit";
+                $storeLedgerDetails->date = date('Y-m-d');
+                $storeLedgerDetails->receipt_id = $receipt->id;
+                $storeLedgerDetails->receipt_details_id = $supplierBillReceiptDetails;
+                $storeLedgerDetails->payment_type = $receipt->payment_method;
+                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
+                $storeLedgerDetails->save();
+            }
+            if ($bill['status'] === 'Paid') {
+                Bill::where('id', $bill['id'])->update(['disbursed' => 1]);
+            }
+            $totalOwnerAmount -= $bill['amount'];
+
+            return [$totalOwnerAmount, $pushObject];
         }
     }
 }

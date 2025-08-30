@@ -21,6 +21,29 @@ class Roles extends Migration
             $table->boolean('soft_delete');
             $table->timestamps();
         });
+        DB::table('roles')->insert([
+            [
+                'name' => 'Property Manager',
+                'created_by' => "Admin",
+                'soft_delete' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Strata Manager',
+                'created_by' => "Admin",
+                'soft_delete' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Staff Manager',
+                'created_by' => "Admin",
+                'soft_delete' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
     }
 
     /**

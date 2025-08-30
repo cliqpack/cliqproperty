@@ -24,6 +24,16 @@ class RolesDetails extends Migration
             $table->boolean('soft_delete');
             $table->timestamps();
         });
+        for ($i = 1; $i <= 28; $i++) {
+            DB::table('roles_details')->insert([
+                'role_id' => 1,
+                'module_id' => $i,
+                'created_by' => 'admin',
+                'soft_delete' => 0,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
     }
 
     /**

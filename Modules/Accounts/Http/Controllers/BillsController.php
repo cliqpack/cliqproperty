@@ -710,12 +710,20 @@ class BillsController extends Controller
                 // FOLIO LEDGER
                 if ($bill->owner_folio_id != '') {
                     $ledger = FolioLedger::where('folio_id', $ownerfolio->id)->where('folio_type', 'Owner')->orderBy('id', 'desc')->first();
+                    $ledgerBalance = FolioLedgerBalance::where('folio_id', $ownerfolio->id)->where('folio_type', 'Owner')->orderBy('id', 'desc')->first();
                 } else if ($bill->seller_folio_id != '') {
                     $ledger = FolioLedger::where('folio_id', $sellerfolio->id)->where('folio_type', 'Seller')->orderBy('id', 'desc')->first();
+                    $ledgerBalance = FolioLedgerBalance::where('folio_id', $sellerfolio->id)->where('folio_type', 'Seller')->orderBy('id', 'desc')->first();
                 }
                 $ledger->updated = 1;
                 $ledger->closing_balance = $ledger->closing_balance - $bill->amount;
                 $ledger->save();
+
+                $ledgerBalance->updated = 1;
+                $ledgerBalance->closing_balance = $ledger->closing_balance - $bill->amount;
+                $ledgerBalance->save();
+
+                
                 $storeLedgerDetails = new FolioLedgerDetailsDaily();
 
                 $storeLedgerDetails->company_id = auth('api')->user()->company_id;

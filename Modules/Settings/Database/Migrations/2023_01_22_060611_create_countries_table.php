@@ -22,8 +22,8 @@ class CreateCountriesTable extends Migration
         });
 
         Country::create(['country_name' => 'Australia']);
-        Country::create(['country_name' => 'Great Britain']);
-        Country::create(['country_name' => 'New Zealand']);
+        Country::create(['country_name' => 'Canada']);
+        Country::create(['country_name' => 'Bangladesh']);
     }
 
     /**

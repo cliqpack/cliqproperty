@@ -17,7 +17,6 @@ class LabelSettingController extends Controller
     public function index()
     {
         try {
-
             $label = LabelSetting::where('company_id', auth('api')->user()->company_id)->get();
             return response()->json([
                 'label' => $label,
@@ -112,15 +111,14 @@ class LabelSettingController extends Controller
      */
     public function update(Request $request, $id)
     {
-
         try {
             $attributeNames = array(
                 // Seller Contact
-                'label_name'             => $request->label_name,
+                'label_name'      => $request->label_name,
                 'type'            => $request->type,
-                'priority'             => $request->priority,
-                'preview'            => $request->preview,
-                'company_id'            => auth('api')->user()->company_id,
+                'priority'        => $request->priority,
+                'preview'         => $request->preview,
+                'company_id'      => auth('api')->user()->company_id,
 
 
             );
@@ -133,9 +131,9 @@ class LabelSettingController extends Controller
 
                 $label->update([
                     "label_name"    => $request->label_name ? $request->label_name : null,
-                    "type"   => $request->type ? $request->type : null,
-                    "priority"    => $request->priority ? $request->priority : null,
-                    "preview"   => $request->preview ? $request->preview : null,
+                    "type"          => $request->type ? $request->type : null,
+                    "priority"      => $request->priority ? $request->priority : null,
+                    "preview"       => $request->preview ? $request->preview : null,
                 ]);
             }
             return response()->json([

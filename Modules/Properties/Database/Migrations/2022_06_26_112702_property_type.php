@@ -17,7 +17,26 @@ class PropertyType extends Migration
         Schema::create('property_types', function (Blueprint $table) {
             $table->id('id');
             $table->string('type');
+            $table->timestamps();
         });
+        DB::table('property_types')->insert([
+            [
+                'type' => 'Apartment',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'type' => 'House',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'type' => 'Townhouse',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+        ]);
     }
 
     /**

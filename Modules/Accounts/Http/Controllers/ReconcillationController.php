@@ -432,22 +432,7 @@ class ReconcillationController extends Controller
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
         }
     }
-    public function unreconcillied_withdrawls_update(Request $request)
-    {
-        try {
-            DB::transaction(function () use ($request) {
-                foreach ($request->id as $value) {
-                    GeneratedWithdrawal::where('id', $value)->where('reconcile', false)->update([
-                        "reconcile" => 1,
-                        "reconcile_date" => Date('Y-m-d')
-                    ]);
-                }
-            });
-            return response()->json(['message' => 'Successfull'], 200);
-        } catch (\Throwable $th) {
-            return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
-        }
-    }
+    
     public function reconcillied_withdrawls_update(Request $request)
     {
         try {
@@ -461,6 +446,23 @@ class ReconcillationController extends Controller
                     }
                 });
             }
+            return response()->json(['message' => 'Successfull'], 200);
+        } catch (\Throwable $th) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
+        }
+    }
+
+    public function unreconcillied_withdrawls_update(Request $request)
+    {
+        try {
+            DB::transaction(function () use ($request) {
+                foreach ($request->id as $value) {
+                    GeneratedWithdrawal::where('id', $value)->where('reconcile', false)->update([
+                        "reconcile" => 1,
+                        "reconcile_date" => Date('Y-m-d')
+                    ]);
+                }
+            });
             return response()->json(['message' => 'Successfull'], 200);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $th->getMessage(), "data" => []], 500);
@@ -622,30 +624,7 @@ class ReconcillationController extends Controller
         }
     }
 
-    /**
-     * ------   JOURNAL REPORT FUNCTION    -----------
-     * BILL PAYMENT RECEIPT DATA
-     * JOURNAL RECEIPT DATA
-     */
-    public function journalBalance($year, $month)
-    {
-        try {
-            $journalBalance = Receipt::select('id', 'property_id', 'contact_id', 'amount', 'ref', 'receipt_date', 'type', 'payment_method')
-                ->where('receipt_date', 'LIKE', '%' . $year . '-' . $month . '%')
-                ->whereIn('type', ['Bill', 'Journal'])
-                ->where('company_id', auth('api')->user()->company_id)
-                ->with('receipt_details');
-            $journalBalanceSum = $journalBalance->sum('amount');
-            $journalBalance = $journalBalance->get();
-            return response()->json([
-                'journalBalance' => $journalBalance,
-                'journalBalanceSum' => $journalBalanceSum,
-                'message' => 'Successful'
-            ], 200);
-        } catch (\Exception $ex) {
-            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
-        }
-    }
+   
 
     public function cashBookBalance($year, $month)
     {
@@ -673,6 +652,31 @@ class ReconcillationController extends Controller
                 'cashBookDebitBalance' => $cashBookDebitBalance,
                 'cashBookCreditBalance' => $cashBookCreditBalance,
                 'bankDepositList' => $bankDepositList,
+                'message' => 'Successful'
+            ], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
+        }
+    }
+
+     /**
+     * ------   JOURNAL REPORT FUNCTION    -----------
+     * BILL PAYMENT RECEIPT DATA
+     * JOURNAL RECEIPT DATA
+     */
+    public function journalBalance($year, $month)
+    {
+        try {
+            $journalBalance = Receipt::select('id', 'property_id', 'contact_id', 'amount', 'ref', 'receipt_date', 'type', 'payment_method')
+                ->where('receipt_date', 'LIKE', '%' . $year . '-' . $month . '%')
+                ->whereIn('type', ['Bill', 'Journal'])
+                ->where('company_id', auth('api')->user()->company_id)
+                ->with('receipt_details');
+            $journalBalanceSum = $journalBalance->sum('amount');
+            $journalBalance = $journalBalance->get();
+            return response()->json([
+                'journalBalance' => $journalBalance,
+                'journalBalanceSum' => $journalBalanceSum,
                 'message' => 'Successful'
             ], 200);
         } catch (\Exception $ex) {

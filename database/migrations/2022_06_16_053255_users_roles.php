@@ -24,6 +24,17 @@ class UsersRoles extends Migration
             $table->boolean('soft_delete');
             $table->timestamps();
         });
+        DB::table('users_roles')->insert([
+            [
+                'user_id' => 2,
+                'role_id' => 1,
+                'created_by' => 1,
+                'soft_delete' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            
+        ]);
     }
 
     /**

@@ -80,7 +80,168 @@ class ReceiptController extends Controller
         //
     }
 
+   
+
+
     /**
+     * THIS FUNCTION IS USED TO STORE THE FOLIO RECEIPT
+     * FOLIO CAN BE RECEIPTED TO OWNER OR TENANT
+     */
+    public function sales_folio_receipt_store(Request $request)
+    {
+        try {
+            DB::transaction(function () use ($request) {
+                $folio_receipt_amount = round($request->amount, 2);
+                $receipt = new Receipt();
+                $receipt->property_id = $request->property_id;
+                $receipt->note = $request->note;
+                $receipt->folio_id = $request->folio_id;
+                $receipt->folio_type = $request->folio_type;
+                if ($request->folio_type === 'Seller') {
+                    $receipt->seller_folio_id = $request->folio_id;
+                }
+                $receipt->contact_id = $request->contact_id;
+                $receipt->amount = $folio_receipt_amount;
+                $receipt->summary = $request->description;
+                $receipt->receipt_date = Date('Y-m-d');
+                $receipt->payment_method = $request->pay_type;
+                $receipt->from = $request->money_from;
+                $receipt->type = "Receipt";
+                $receipt->new_type = 'Receipt';
+                $receipt->created_by = $request->created_by;
+                $receipt->updated_by = $request->updated_by;
+                $receipt->from_folio_id = $request->folio_id;
+                $receipt->from_folio_type = $request->folio_type;
+                if ($request->pay_type === 'eft') {
+                    $receipt->status = "Cleared";
+                    $receipt->cleared_date = Date('Y-m-d');
+                } else {
+                    $receipt->status = "Uncleared";
+                }
+                $receipt->company_id = auth('api')->user()->company_id;
+                if ($request->pay_type === 'cheque') {
+                    $receipt->cheque_drawer = $request->chequeDetails['drawer'];
+                    $receipt->cheque_bank = $request->chequeDetails['bank'];
+                    $receipt->cheque_branch = $request->chequeDetails['branch'];
+                    $receipt->cheque_amount = $folio_receipt_amount;
+                }
+                $receipt->save();
+
+                $receiptDetails = new ReceiptDetails();
+                $receiptDetails->receipt_id = $receipt->id;
+                $receiptDetails->allocation = "Receipt";
+                $receiptDetails->description = $request->description;
+                $receiptDetails->payment_type = $request->pay_type;
+                $receiptDetails->amount = $folio_receipt_amount;
+                $receiptDetails->folio_id = $request->folio_id;
+                $receiptDetails->folio_type = $request->folio_type;
+                $receiptDetails->account_id = $request->invoiceChart;
+                $receiptDetails->type = "Deposit";
+                $receiptDetails->to_folio_id = $request->folio_id;
+                $receiptDetails->to_folio_type = $request->folio_type;
+                $receiptDetails->pay_type = "credit";
+                if ($request->folio_type === 'Owner') {
+                    $receiptDetails->owner_folio_id = $request->folio_id;
+                } elseif ($request->folio_type === 'Supplier') {
+                    $receiptDetails->supplier_folio_id = $request->folio_id;
+                } elseif ($request->folio_type === 'Tenant') {
+                    $receiptDetails->tenant_folio_id = $request->folio_id;
+                } elseif ($request->folio_type === 'Seller') {
+                    $receiptDetails->seller_folio_id = $request->folio_id;
+                }
+                $receiptDetails->company_id = auth('api')->user()->company_id;
+                $receiptDetails->save();
+
+                $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
+                $ledger->updated = 1;
+                $ledger->save();
+                $ledgerBalance = FolioLedgerBalance::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                if ($ledgerBalance) {
+
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
+                        $ledgerBalance->save();
+                    
+                }
+                $storeLedgerDetails = new FolioLedgerDetailsDaily();
+                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
+                $storeLedgerDetails->ledger_type = $receipt->new_type;
+                $storeLedgerDetails->details = "Folio Receipt";
+                $storeLedgerDetails->folio_id = $request->folio_id;
+                $storeLedgerDetails->folio_type = $request->folio_type;
+                $storeLedgerDetails->amount = $folio_receipt_amount;
+                $storeLedgerDetails->type = "credit";
+                $storeLedgerDetails->date = date('Y-m-d');
+                $storeLedgerDetails->receipt_id = $receipt->id;
+                $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
+                $storeLedgerDetails->payment_type = $receipt->payment_method;
+                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
+                $storeLedgerDetails->save();
+                $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
+                $ledger->updated = 1;
+                $ledger->save();
+                $ledgerBalance = FolioLedgerBalance::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
+                if ($ledgerBalance) {
+
+                        $ledgerBalance->updated = 1;
+                        $ledgerBalance->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
+                        $ledgerBalance->save();
+                    
+                }
+                $storeLedgerDetails = new FolioLedgerDetailsDaily();
+                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
+                $storeLedgerDetails->ledger_type = $receipt->new_type;
+                $storeLedgerDetails->details = "Folio Receipt";
+                $storeLedgerDetails->folio_id = $request->folio_id;
+                $storeLedgerDetails->folio_type = $request->folio_type;
+                $storeLedgerDetails->amount = $folio_receipt_amount;
+                $storeLedgerDetails->type = "credit";
+                $storeLedgerDetails->date = date('Y-m-d');
+                $storeLedgerDetails->receipt_id = $receipt->id;
+                $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
+                $storeLedgerDetails->payment_type = $receipt->payment_method;
+                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
+                $storeLedgerDetails->save();
+
+
+                if ($request->pay_type === 'eft') {
+                    if ($request->folio_type === 'Seller') {
+                        $folio = SellerFolio::where('id', $request->folio_id)->first();
+                        SellerFolio::where('id', $request->folio_id)
+                            ->update([
+                                'money_in' => $folio->money_in + $folio_receipt_amount,
+                                'balance' => $folio->balance + $folio_receipt_amount,
+                            ]);
+                    }
+                } else {
+                    $bankDepositList = new BankDepositList();
+                    $bankDepositList->receipt_id = $receipt->id;
+                    $bankDepositList->receipt_date = Carbon::createFromFormat('d m Y', $request->date)->format('Y-m-d',);
+                    $bankDepositList->payment_method = $request->pay_type;
+                    $bankDepositList->amount = $folio_receipt_amount;
+                    $bankDepositList->company_id = auth('api')->user()->company_id;
+                    $bankDepositList->save();
+
+                    if ($request->folio_type === 'Seller') {
+                        $folio = SellerFolio::where('id', $request->folio_id)->first();
+                        SellerFolio::where('id', $request->folio_id)
+                            ->update([
+                                'money_in' => $folio->money_in + $folio_receipt_amount,
+                                'balance' => $folio->balance + $folio_receipt_amount,
+                            ]);
+                    }
+                }
+            });
+            return response()->json(['message' => 'Successfull'], 200);
+        } catch (\Exception $ex) {
+            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
+        }
+    }
+
+
+     /**
      * THIS FUNCTION IS USED TO STORE THE FOLIO RECEIPT
      * CREATE FOLIO RECEIPT AND RECEIPT DETAILS
      * CALCULATE TAX IF APPLICABLE
@@ -331,164 +492,6 @@ class ReceiptController extends Controller
             return response()->json(['message' => 'Successfull'], 200);
         } catch (\Exception $ex) {
             // Handle any exception that occurs during the transaction
-            return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
-        }
-    }
-
-
-    /**
-     * THIS FUNCTION IS USED TO STORE THE FOLIO RECEIPT
-     * FOLIO CAN BE RECEIPTED TO OWNER OR TENANT
-     */
-    public function sales_folio_receipt_store(Request $request)
-    {
-        try {
-            DB::transaction(function () use ($request) {
-                $folio_receipt_amount = round($request->amount, 2);
-                $receipt = new Receipt();
-                $receipt->property_id = $request->property_id;
-                $receipt->note = $request->note;
-                $receipt->folio_id = $request->folio_id;
-                $receipt->folio_type = $request->folio_type;
-                if ($request->folio_type === 'Seller') {
-                    $receipt->seller_folio_id = $request->folio_id;
-                }
-                $receipt->contact_id = $request->contact_id;
-                $receipt->amount = $folio_receipt_amount;
-                $receipt->summary = $request->description;
-                $receipt->receipt_date = Date('Y-m-d');
-                $receipt->payment_method = $request->pay_type;
-                $receipt->from = $request->money_from;
-                $receipt->type = "Receipt";
-                $receipt->new_type = 'Receipt';
-                $receipt->created_by = $request->created_by;
-                $receipt->updated_by = $request->updated_by;
-                $receipt->from_folio_id = $request->folio_id;
-                $receipt->from_folio_type = $request->folio_type;
-                if ($request->pay_type === 'eft') {
-                    $receipt->status = "Cleared";
-                    $receipt->cleared_date = Date('Y-m-d');
-                } else {
-                    $receipt->status = "Uncleared";
-                }
-                $receipt->company_id = auth('api')->user()->company_id;
-                if ($request->pay_type === 'cheque') {
-                    $receipt->cheque_drawer = $request->chequeDetails['drawer'];
-                    $receipt->cheque_bank = $request->chequeDetails['bank'];
-                    $receipt->cheque_branch = $request->chequeDetails['branch'];
-                    $receipt->cheque_amount = $folio_receipt_amount;
-                }
-                $receipt->save();
-
-                $receiptDetails = new ReceiptDetails();
-                $receiptDetails->receipt_id = $receipt->id;
-                $receiptDetails->allocation = "Receipt";
-                $receiptDetails->description = $request->description;
-                $receiptDetails->payment_type = $request->pay_type;
-                $receiptDetails->amount = $folio_receipt_amount;
-                $receiptDetails->folio_id = $request->folio_id;
-                $receiptDetails->folio_type = $request->folio_type;
-                $receiptDetails->account_id = $request->invoiceChart;
-                $receiptDetails->type = "Deposit";
-                $receiptDetails->to_folio_id = $request->folio_id;
-                $receiptDetails->to_folio_type = $request->folio_type;
-                $receiptDetails->pay_type = "credit";
-                if ($request->folio_type === 'Owner') {
-                    $receiptDetails->owner_folio_id = $request->folio_id;
-                } elseif ($request->folio_type === 'Supplier') {
-                    $receiptDetails->supplier_folio_id = $request->folio_id;
-                } elseif ($request->folio_type === 'Tenant') {
-                    $receiptDetails->tenant_folio_id = $request->folio_id;
-                } elseif ($request->folio_type === 'Seller') {
-                    $receiptDetails->seller_folio_id = $request->folio_id;
-                }
-                $receiptDetails->company_id = auth('api')->user()->company_id;
-                $receiptDetails->save();
-
-                $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
-                $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
-                $ledger->updated = 1;
-                $ledger->save();
-                $ledgerBalance = FolioLedgerBalance::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
-                if ($ledgerBalance) {
-
-                        $ledgerBalance->updated = 1;
-                        $ledgerBalance->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
-                        $ledgerBalance->save();
-                    
-                }
-                $storeLedgerDetails = new FolioLedgerDetailsDaily();
-                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
-                $storeLedgerDetails->ledger_type = $receipt->new_type;
-                $storeLedgerDetails->details = "Folio Receipt";
-                $storeLedgerDetails->folio_id = $request->folio_id;
-                $storeLedgerDetails->folio_type = $request->folio_type;
-                $storeLedgerDetails->amount = $folio_receipt_amount;
-                $storeLedgerDetails->type = "credit";
-                $storeLedgerDetails->date = date('Y-m-d');
-                $storeLedgerDetails->receipt_id = $receipt->id;
-                $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
-                $storeLedgerDetails->payment_type = $receipt->payment_method;
-                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
-                $storeLedgerDetails->save();
-                $ledger = FolioLedger::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
-                $ledger->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
-                $ledger->updated = 1;
-                $ledger->save();
-                $ledgerBalance = FolioLedgerBalance::where('folio_id', $request->folio_id)->where('folio_type', $request->folio_type)->where('company_id', auth('api')->user()->company_id)->orderBy('id', 'desc')->first();
-                if ($ledgerBalance) {
-
-                        $ledgerBalance->updated = 1;
-                        $ledgerBalance->closing_balance = $ledger->closing_balance + $folio_receipt_amount;
-                        $ledgerBalance->save();
-                    
-                }
-                $storeLedgerDetails = new FolioLedgerDetailsDaily();
-                $storeLedgerDetails->company_id = auth('api')->user()->company_id;
-                $storeLedgerDetails->ledger_type = $receipt->new_type;
-                $storeLedgerDetails->details = "Folio Receipt";
-                $storeLedgerDetails->folio_id = $request->folio_id;
-                $storeLedgerDetails->folio_type = $request->folio_type;
-                $storeLedgerDetails->amount = $folio_receipt_amount;
-                $storeLedgerDetails->type = "credit";
-                $storeLedgerDetails->date = date('Y-m-d');
-                $storeLedgerDetails->receipt_id = $receipt->id;
-                $storeLedgerDetails->receipt_details_id = $receiptDetails->id;
-                $storeLedgerDetails->payment_type = $receipt->payment_method;
-                $storeLedgerDetails->folio_ledgers_id = $ledger->id;
-                $storeLedgerDetails->save();
-
-
-                if ($request->pay_type === 'eft') {
-                    if ($request->folio_type === 'Seller') {
-                        $folio = SellerFolio::where('id', $request->folio_id)->first();
-                        SellerFolio::where('id', $request->folio_id)
-                            ->update([
-                                'money_in' => $folio->money_in + $folio_receipt_amount,
-                                'balance' => $folio->balance + $folio_receipt_amount,
-                            ]);
-                    }
-                } else {
-                    $bankDepositList = new BankDepositList();
-                    $bankDepositList->receipt_id = $receipt->id;
-                    $bankDepositList->receipt_date = Carbon::createFromFormat('d m Y', $request->date)->format('Y-m-d',);
-                    $bankDepositList->payment_method = $request->pay_type;
-                    $bankDepositList->amount = $folio_receipt_amount;
-                    $bankDepositList->company_id = auth('api')->user()->company_id;
-                    $bankDepositList->save();
-
-                    if ($request->folio_type === 'Seller') {
-                        $folio = SellerFolio::where('id', $request->folio_id)->first();
-                        SellerFolio::where('id', $request->folio_id)
-                            ->update([
-                                'money_in' => $folio->money_in + $folio_receipt_amount,
-                                'balance' => $folio->balance + $folio_receipt_amount,
-                            ]);
-                    }
-                }
-            });
-            return response()->json(['message' => 'Successfull'], 200);
-        } catch (\Exception $ex) {
             return response()->json(["status" => false, "error" => ['error'], "message" => $ex->getMessage(), "data" => []], 500);
         }
     }

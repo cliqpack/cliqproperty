@@ -20,9 +20,7 @@ class MessageSettingController extends Controller
     public function index()
     {
         try {
-
             $companyId = Auth::guard('api')->user()->company_id;
-
             $messageSettings = MessageSetting::where('company_id', $companyId)->with('messageSetting')->first();
 
             if (!$messageSettings) {
