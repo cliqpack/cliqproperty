@@ -806,7 +806,7 @@ class InspectionController extends Controller
             }
             $docUpload->save();
 
-            // $docPath = "https://myday-backend.myday.biz/public/Document" . $filename;
+            // $docPath = "https://prod-back.cliqproperty.com/public/Document" . $filename;
             $docPath = config('app.api_url_server_doc') . $filename;
 
             return response()->json(['data' => $docPath, 'message' => 'Successful'], 200);
