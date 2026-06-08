@@ -56,12 +56,12 @@ return [
 
     'asset_url' => env('ASSET_URL', null),
 
-    'api_url' => env('API', 'https://prod-back.cliqproperty.com/api/'),
+    'api_url' => env('API', 'https://prop-back.cliqproperty.com/api/'),
     'api_url_server' => env('API_IMAGE', 'https://mydaybucket.s3.ap-southeast-1.amazonaws.com/'),
-    // 'api_url_server_s' => env('API_IMAGE', 'https://prod-back.cliqproperty.com/public/Image/'),
+    // 'api_url_server_s' => env('API_IMAGE', 'https://prop-back.cliqproperty.com/public/Image/'),
 
-    'api_url_server_doc' => env('API_DOC', 'https://prod-back.cliqproperty.com/public/Document/'),
-    'api_url_server_doc_2' => env('API_DOC_2', 'https://prod-back.cliqproperty.com/storage/Document/'),
+    'api_url_server_doc' => env('API_DOC', 'https://prop-back.cliqproperty.com/public/Document/'),
+    'api_url_server_doc_2' => env('API_DOC_2', 'https://prop-back.cliqproperty.com/storage/Document/'),
     'asset_s' => env('ASSET_S', 'live'),
 
     // 'api_url' => env('API', 'http://192.168.110.66:8000'),
