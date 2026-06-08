@@ -49,7 +49,7 @@ class AdminPanelController extends Controller
             $attributeNames = array(
                 'company_name' => $request->company_name,
                 'phone' => $request->mobile_phone,
-                'address' => $request->address,
+                'address' => $request->address
             );
 
             $validator = Validator::make($attributeNames, [
