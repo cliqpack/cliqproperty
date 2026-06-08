@@ -12,5 +12,5 @@
 */
 
 Route::prefix('maintenance')->group(function() {
-    Route::get('/', 'MaintenanceController@index');
+    Route::get('/', 'MaintenancesController@index');
 });

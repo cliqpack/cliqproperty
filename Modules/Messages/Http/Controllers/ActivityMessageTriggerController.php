@@ -49,13 +49,20 @@ class ActivityMessageTriggerController extends Controller
     public $data;
     public $type;
 
-    public function __construct($message_action_name, $v, $messsage_trigger_point, $data, $type)
+    // public function __construct($message_action_name, $v, $messsage_trigger_point, $data, $type)
+    // {
+    //     $this->message_action_name = $message_action_name;
+    //     $this->messsage_trigger_point = $messsage_trigger_point;
+    //     $this->data = $data;
+    //     $this->type = $type;
+    // }
+
+    
+    public function __construct()
     {
-        $this->message_action_name = $message_action_name;
-        $this->messsage_trigger_point = $messsage_trigger_point;
-        $this->data = $data;
-        $this->type = $type;
+       
     }
+
 
     public function trigger()
     {
